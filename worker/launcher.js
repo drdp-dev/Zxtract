@@ -23,6 +23,13 @@
     "font:14px/1.45 system-ui,sans-serif"
   ].join(";");
 
+  const dragHandle = document.createElement("div");
+  dragHandle.setAttribute("aria-label", "Drag to move Zxtract");
+  dragHandle.style.cssText = "height:18px;display:flex;align-items:center;justify-content:center;margin:-5px 0 7px;";
+  const grip = document.createElement("div");
+  grip.style.cssText = "width:42px;height:4px;border-radius:4px;background:#64748b;";
+  dragHandle.appendChild(grip);
+
   const header = document.createElement("div");
   header.style.cssText = "display:flex;align-items:center;justify-content:space-between;margin-bottom:10px";
   const title = document.createElement("strong");
@@ -48,8 +55,51 @@
   const status = document.createElement("div");
   status.textContent = "Loading script catalogue…";
   status.style.cssText = "color:#bfdbfe;margin-top:9px;font-size:12px;overflow-wrap:anywhere";
-  panel.append(header, description, select, load, status);
+  panel.append(dragHandle, header, description, select, load, status);
   document.body.appendChild(panel);
+
+  function makeDraggable(panel, handle) {
+    let drag = null;
+    handle.style.cssText += ";touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none;";
+    handle.addEventListener("pointerdown", event => {
+      if (event.button !== 0 && event.pointerType === "mouse") return;
+      const rect = panel.getBoundingClientRect();
+      drag = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, left: rect.left, top: rect.top };
+      panel.style.left = rect.left + "px";
+      panel.style.top = rect.top + "px";
+      panel.style.right = "auto";
+      panel.style.bottom = "auto";
+      panel.style.margin = "0";
+      handle.style.cursor = "grabbing";
+      try { handle.setPointerCapture(event.pointerId); } catch (_) {}
+      event.preventDefault();
+    });
+    handle.addEventListener("pointermove", event => {
+      if (!drag || event.pointerId !== drag.pointerId) return;
+      const maxLeft = Math.max(0, window.innerWidth - panel.offsetWidth);
+      const maxTop = Math.max(0, window.innerHeight - panel.offsetHeight);
+      const left = Math.min(maxLeft, Math.max(0, drag.left + event.clientX - drag.x));
+      const top = Math.min(maxTop, Math.max(0, drag.top + event.clientY - drag.y));
+      panel.style.left = left + "px";
+      panel.style.top = top + "px";
+    });
+    const stop = event => {
+      if (!drag || event.pointerId !== drag.pointerId) return;
+      drag = null;
+      handle.style.cursor = "grab";
+    };
+    handle.addEventListener("pointerup", stop);
+    handle.addEventListener("pointercancel", stop);
+    window.addEventListener("resize", () => {
+      if (panel.style.left && panel.style.top) {
+        const rect = panel.getBoundingClientRect();
+        panel.style.left = Math.min(Math.max(0, rect.left), Math.max(0, window.innerWidth - rect.width)) + "px";
+        panel.style.top = Math.min(Math.max(0, rect.top), Math.max(0, window.innerHeight - rect.height)) + "px";
+      }
+    });
+  }
+
+  makeDraggable(panel, dragHandle);
 
   function buttonStyle(background) {
     return "padding:9px 12px;border:0;border-radius:7px;background:" + background +
