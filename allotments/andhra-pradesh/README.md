@@ -25,6 +25,36 @@ Current extractor version: **1.5.8**
 
 The popup can be moved using its top handle. Its position is saved on the Zynerd website and restored on reload.
 
+## Management quota — Zynerd
+
+Script: [`management-quota.js`](./management-quota.js)
+
+Current extractor version: **1.0.0**
+
+### Launch on Android Chrome
+
+1. Open the Zynerd Andhra Pradesh Management Quota allotments table (`counselling_id=4`).
+2. Tap the saved **Zxtract** bookmarklet.
+3. Select **Andhra Pradesh Management Quota (Zynerd)** under **Extractor**.
+4. Tap **Load selected extractor**. The **Zxtract · Extractor** panel appears.
+5. Tap **Choose file & start** and select a new `.json` file. The suggested filename is `AP-MQ-2026-R1.json`.
+6. Trigger one page load manually after starting capture. For example, change the table page or rank view. This first captured page starts automatic pagination.
+7. The extractor saves each page before clicking **Next**. Do not click Next manually while capture is running.
+8. Monitor page and record counts. On completion, the file is closed and the start button becomes available for another round.
+
+The extractor uses the same Zynerd table endpoint as Government Quota, but matches only `counselling_id=4`. It expects `data.records` and a page size of 50. The initial inspection showed 503 records (11 pages) and request-body fields `session`, `has_joined`, `displayed_fields`, and `filter_rank`.
+
+### Output schema
+
+Each JSON object contains:
+
+- `round`
+- `rank`, `ai_rank`, `counselling_rank` (kept separately)
+- `institute_id`, `institute`, `course`, `quota`
+- `category`, `state`, `inservice_candidate`
+
+Nested institute, course, and quota values are flattened to their IDs/names. Missing values are written as JSON `null`.
+
 ### Confirmed source contract
 
 Observed from the live Zynerd table:
