@@ -6,7 +6,7 @@ Dataset-specific extractor scripts for Andhra Pradesh postgraduate medical allot
 
 Script: [`government-quota.js`](./government-quota.js)
 
-Current extractor version: **1.5.4**
+Current extractor version: **1.5.5**
 
 ### Launch on Android Chrome
 
@@ -20,7 +20,8 @@ Current extractor version: **1.5.4**
 6. Trigger one page load manually after starting capture. For example, change the table page or rank view. This first captured page starts automatic pagination.
 7. Each subsequent **Next** click happens only after the previous page has been written and the file writer has closed. Do not click Next manually while capture is running.
 8. Monitor the page and record counts in the panel. The extractor restores the original XHR methods when capture completes or encounters an error.
-9. The panel offers **Close** after completion.
+9. To extract another round on the same counselling page, select a new output file and tap **Choose file & start** again. The extractor reinstalls its XHR hooks for each new run; a page reload is not required between rounds.
+10. The panel offers **Close** after completion.
 
 The popup can be moved using its top handle. Its position is saved on the Zynerd website and restored on reload.
 
