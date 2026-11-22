@@ -1,6 +1,6 @@
 /**
  * Zxtract — Andhra Pradesh Government Quota (Zynerd)
- * Version: 1.3.0
+ * Version: 1.4.0
  *
  * Run in Eruda Console after the Zynerd allotments table loads.
  * Choose an output file, then trigger one page load manually.
@@ -13,16 +13,17 @@
 (() => {
   "use strict";
 
-  const KEY = "__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_3__";
+  const KEY = "__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_4__";
   const ENDPOINT = "/api_v2/allotments/table_data";
   const COUNSELLING_ID = "3";
 
   if (
     window[KEY]?.installed ||
+    window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_3__?.installed ||
     window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_2__?.installed ||
     window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_1__?.installed
   ) {
-    console.warn("[Zxtract] An earlier extractor is installed. Reload Zynerd before installing v1.3.0.");
+    console.warn("[Zxtract] An earlier extractor is installed. Reload Zynerd before installing v1.4.0.");
     return;
   }
 
@@ -41,7 +42,6 @@
     errors: 0,
     status: null,
     stats: null,
-    buttons: {}
   };
   window[KEY] = state;
 
@@ -56,12 +56,6 @@
     if (state.stats) {
       state.stats.textContent = "Pages " + state.pages +
         " · Records " + state.records + " · Errors " + state.errors;
-    }
-    if (state.buttons.start) {
-      state.buttons.start.disabled = state.active;
-      state.buttons.pause.disabled = !state.active;
-      state.buttons.resume.disabled = state.active || !state.file;
-      state.buttons.stop.disabled = !state.file;
     }
   }
 
@@ -221,18 +215,6 @@
   proto.open = patchedOpen;
   proto.send = patchedSend;
 
-  function button(label, action, color) {
-    const element = document.createElement("button");
-    element.type = "button";
-    element.textContent = label;
-    element.style.cssText =
-      "padding:8px 10px;border:0;border-radius:7px;background:" +
-      (color || "#2563eb") +
-      ";color:white;font:600 13px system-ui;min-height:36px;";
-    element.addEventListener("click", action);
-    return element;
-  }
-
   function installPanel() {
     if (!document.body) {
       cleanup("Page body unavailable. Reload and run after the table loads.");
@@ -259,10 +241,12 @@
     stats.style.cssText = "font-size:11px;color:#d1d5db;margin-bottom:9px;";
     stats.textContent = "Pages 0 · Records 0 · Errors 0";
 
-    const controls = document.createElement("div");
-    controls.style.cssText = "display:flex;flex-wrap:wrap;gap:7px;";
 
-    const start = button("Choose file & start", async () => {
+    const start = document.createElement("button");
+    start.type = "button";
+    start.textContent = "Choose file & start";
+    start.style.cssText = "padding:8px 10px;border:0;border-radius:7px;background:#2563eb;color:white;font:600 13px system-ui;min-height:36px;";
+    start.addEventListener("click", async () => {
       if (!window.showSaveFilePicker) {
         update("File picker API unavailable in this browser context.");
         return;
@@ -292,34 +276,14 @@
       }
     });
 
-    const pause = button("Pause", () => {
-      state.active = false;
-      update("Paused. Resume, then click Next manually to continue.");
-    });
-
-    const resume = button("Resume", () => {
-      if (!state.file) return;
-      state.active = true;
-      update("Resumed. Click Next once to continue capture.");
-    });
-
-    const stop = button("Stop", async () => {
-      state.active = false;
-      await state.queue;
-      cleanup("Stopped. All queued writes finished; XHR hooks removed.");
-    });
-
-    const hide = button("Hide", () => panel.remove(), "#4b5563");
-    controls.append(start, pause, resume, stop, hide);
-    panel.append(heading, status, stats, controls);
+    panel.append(heading, status, stats, start);
     document.body.appendChild(panel);
 
     state.status = status;
     state.stats = stats;
-    state.buttons = { start, pause, resume, stop };
     update("Ready. Choose an output file.");
   }
 
   installPanel();
-  console.info("[Zxtract] v1.3.0 installed. Minimal capture mode; XHR hooks are removed on stop or completion.");
+  console.info("[Zxtract] v1.4.0 installed. Minimal capture mode; XHR hooks are removed on stop or completion.");
 })();
