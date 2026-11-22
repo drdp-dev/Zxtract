@@ -13,6 +13,8 @@ Connect this repository to Cloudflare Workers Builds and configure:
 | Build command | `npm run build` |
 | Deploy command | `npx wrangler deploy` |
 
+The Worker is configured to use the custom domain `https://zxtract.drdp.dev`. Its Wrangler configuration explicitly disables the `workers.dev` hostname and Preview/Version URLs.
+
 The build script discovers executable JavaScript files throughout the repository, excluding the `worker/` implementation, hidden folders, dependency folders, and files whose names contain `bookmarklet`. It copies each script into the generated static assets using its exact repository-relative path and generates `scripts-manifest.json`.
 
 No GitHub API token, Worker secret, database, or external runtime dependency is required. Git-connected deployment checks out the repository and builds the assets directly.
@@ -28,17 +30,17 @@ No GitHub API token, Worker secret, database, or external runtime dependency is 
 For example, `allotments/andhra-pradesh/government-quota.js` is served at:
 
 ```text
-https://YOUR-WORKER-SUBDOMAIN.workers.dev/scripts/allotments/andhra-pradesh/government-quota.js
+https://zxtract.drdp.dev/scripts/allotments/andhra-pradesh/government-quota.js
 ```
 
 The catalogue is generated on every build, so adding a JavaScript extractor anywhere in the repository (outside the excluded directories) makes it appear in the launcher after the next successful deployment. The original folder hierarchy is retained.
 
 ## Permanent bookmarklet
 
-After the first deployment, replace `YOUR-WORKER-SUBDOMAIN` in the following bookmark URL with the actual `workers.dev` hostname assigned by Cloudflare. Save the complete one-line value as a Chrome bookmark URL.
+Save the following one-line value as a Chrome bookmark URL:
 
 ```javascript
-javascript:(()=>{const s=document.createElement("script");s.src="https://YOUR-WORKER-SUBDOMAIN.workers.dev/launcher.js";s.async=true;s.onerror=()=>alert("Zxtract launcher could not load. Check the Worker URL or the site's Content Security Policy.");document.documentElement.appendChild(s)})()
+javascript:(()=>{const s=document.createElement("script");s.src="https://zxtract.drdp.dev/launcher.js";s.async=true;s.onerror=()=>alert("Zxtract launcher could not load. Check the Worker URL or the site's Content Security Policy.");document.documentElement.appendChild(s)})()
 ```
 
 Tap the bookmark on a counselling page to load the launcher. Select an extractor and load it. The launcher obtains the catalogue and selected script from the Worker.
