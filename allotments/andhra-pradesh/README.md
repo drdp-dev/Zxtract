@@ -6,7 +6,7 @@ Dataset-specific extractor scripts for Andhra Pradesh postgraduate medical allot
 
 Script: [`government-quota.js`](./government-quota.js)
 
-Current extractor version: **1.5.5**
+Current extractor version: **1.5.6**
 
 ### Launch on Android Chrome
 
@@ -16,7 +16,7 @@ Current extractor version: **1.5.5**
 4. Tap **Load selected extractor**. The **Zxtract · Extractor** panel appears.
 5. Tap **Choose file & start** and select a new `.json` file.
    - If Android creates the file but the save picker reports an `AbortError`, the button changes to **Select created file**. Tap it and select the file Android just created.
-   - The extractor initializes the selected file as a standard JSON array. Use a new filename to preserve an earlier capture.
+   - The extractor initializes the selected file as a standard JSON array. It displays separate stages for opening, writing, and finalizing the file, so a stalled stage can be identified. Use a new filename to preserve an earlier capture.
 6. Trigger one page load manually after starting capture. For example, change the table page or rank view. This first captured page starts automatic pagination.
 7. Each subsequent **Next** click happens only after the previous page has been written and the file writer has closed. Do not click Next manually while capture is running.
 8. Monitor the page and record counts in the panel. The extractor restores the original XHR methods when capture completes or encounters an error.
