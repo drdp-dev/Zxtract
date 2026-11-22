@@ -294,7 +294,7 @@
         try {
           const date = new Date().toISOString().slice(0, 10);
           handle = await window.showSaveFilePicker({
-            suggestedName: "R1.json",
+            suggestedName: "AP-CQ-2026-R1.json",
             types: [{
               description: "JSON",
               accept: { "application/json": [".json"] }
