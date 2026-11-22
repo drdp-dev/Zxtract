@@ -2,8 +2,9 @@
  * Zxtract diagnostics — inspect Zynerd institute fields
  * Version: 1.1.0
  *
- * Run in Eruda Console on the Andhra Pradesh Government Quota allotments page.
- * A small on-page panel appears. Trigger one table page load, then tap Copy
+ * Load this from the Zxtract bookmarklet launcher on the Andhra Pradesh
+ * Government Quota page. It creates its own on-page panel; no Eruda or
+ * developer console is required. Trigger one table page load, then tap Copy
  * inspection to copy the captured institute fields for sharing.
  *
  * Endpoint:
