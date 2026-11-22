@@ -13,7 +13,7 @@ Connect this repository to Cloudflare Workers Builds and configure:
 | Build command | `npm run build` |
 | Deploy command | `npx wrangler deploy` |
 
-The build script copies `../allotments/` into the Worker's generated static assets while preserving every repository-relative path. It also generates `scripts-manifest.json` by discovering executable JavaScript files. Files whose names contain `bookmarklet` are deliberately excluded.
+The build script discovers executable JavaScript files throughout the repository, excluding the `worker/` implementation, hidden folders, dependency folders, and files whose names contain `bookmarklet`. It copies each script into the generated static assets using its exact repository-relative path and generates `scripts-manifest.json`.
 
 No GitHub API token, Worker secret, database, or external runtime dependency is required. Git-connected deployment checks out the repository and builds the assets directly.
 
@@ -23,7 +23,7 @@ No GitHub API token, Worker secret, database, or external runtime dependency is 
 - `/health` — health check
 - `/api/scripts` — generated extractor catalogue
 - `/launcher.js` — launcher interface code
-- `/scripts/allotments/...` — an individual repository script
+- `/scripts/<repository-relative-path>` — an individual repository script
 
 For example, `allotments/andhra-pradesh/government-quota.js` is served at:
 
@@ -31,7 +31,7 @@ For example, `allotments/andhra-pradesh/government-quota.js` is served at:
 https://YOUR-WORKER-SUBDOMAIN.workers.dev/scripts/allotments/andhra-pradesh/government-quota.js
 ```
 
-The catalogue is generated on every build, so adding a JavaScript extractor under `allotments/` makes it appear in the launcher after the next successful deployment. The original folder hierarchy is retained.
+The catalogue is generated on every build, so adding a JavaScript extractor anywhere in the repository (outside the excluded directories) makes it appear in the launcher after the next successful deployment. The original folder hierarchy is retained.
 
 ## Permanent bookmarklet
 
