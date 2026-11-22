@@ -248,6 +248,14 @@
       "border:1px solid #374151;border-radius:12px;box-shadow:0 4px 24px #0008;" +
       "font:13px/1.4 system-ui;";
 
+
+    const dragHandle = document.createElement("div");
+    dragHandle.setAttribute("aria-label", "Drag to move Zxtract");
+    dragHandle.style.cssText = "height:18px;display:flex;align-items:center;justify-content:center;margin:-5px 0 7px;";
+    const grip = document.createElement("div");
+    grip.style.cssText = "width:42px;height:4px;border-radius:4px;background:#64748b;";
+    dragHandle.appendChild(grip);
+
     const heading = document.createElement("div");
     heading.textContent = "Zxtract · AP Government Quota";
     heading.style.cssText = "font-weight:700;margin-bottom:7px;";
@@ -349,8 +357,48 @@
       update("Capturing. Trigger one page load manually to start.");
     });
 
-    panel.append(heading, status, stats, start, close);
+    panel.append(dragHandle, heading, status, stats, start, close);
     document.body.appendChild(panel);
+
+  function makeDraggable(panel, handle) {
+    let drag = null;
+    handle.style.cssText += ";touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none;";
+    handle.addEventListener("pointerdown", event => {
+      if (event.button !== 0 && event.pointerType === "mouse") return;
+      const rect = panel.getBoundingClientRect();
+      drag = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, left: rect.left, top: rect.top };
+      panel.style.left = rect.left + "px";
+      panel.style.top = rect.top + "px";
+      panel.style.right = "auto";
+      panel.style.bottom = "auto";
+      panel.style.margin = "0";
+      handle.style.cursor = "grabbing";
+      try { handle.setPointerCapture(event.pointerId); } catch (_) {}
+      event.preventDefault();
+    });
+    handle.addEventListener("pointermove", event => {
+      if (!drag || event.pointerId !== drag.pointerId) return;
+      const maxLeft = Math.max(0, window.innerWidth - panel.offsetWidth);
+      const maxTop = Math.max(0, window.innerHeight - panel.offsetHeight);
+      panel.style.left = Math.min(maxLeft, Math.max(0, drag.left + event.clientX - drag.x)) + "px";
+      panel.style.top = Math.min(maxTop, Math.max(0, drag.top + event.clientY - drag.y)) + "px";
+    });
+    const stop = event => {
+      if (!drag || event.pointerId !== drag.pointerId) return;
+      drag = null;
+      handle.style.cursor = "grab";
+    };
+    handle.addEventListener("pointerup", stop);
+    handle.addEventListener("pointercancel", stop);
+    window.addEventListener("resize", () => {
+      if (!panel.style.left || !panel.style.top) return;
+      const rect = panel.getBoundingClientRect();
+      panel.style.left = Math.min(Math.max(0, rect.left), Math.max(0, window.innerWidth - rect.width)) + "px";
+      panel.style.top = Math.min(Math.max(0, rect.top), Math.max(0, window.innerHeight - rect.height)) + "px";
+    });
+  }
+
+    makeDraggable(panel, dragHandle);
 
     state.status = status;
     state.stats = stats;
