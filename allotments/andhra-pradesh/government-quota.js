@@ -1,31 +1,32 @@
 /**
  * Zxtract — Andhra Pradesh Government Quota (Zynerd)
- * Version: 1.4.2
+ * Version: 1.5.0
  *
  * Run in Eruda Console after the Zynerd allotments table loads.
  * Choose an output file, then trigger one page load manually.
  * Each subsequent Next click occurs only after the preceding page is saved.
  *
- * JSONL fields: rank, institute_id, institute, course, quota, category
+ * JSON fields: rank, institute_id, institute, course, quota, category
  * POST /api_v2/allotments/table_data?counselling_id=3&offset=N
  */
 
 (() => {
   "use strict";
 
-  const KEY = "__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_4_2__";
+  const KEY = "__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_5_0__";
   const ENDPOINT = "/api_v2/allotments/table_data";
   const COUNSELLING_ID = "3";
 
   if (
     window[KEY]?.installed ||
+    window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_4_2__?.installed ||
     window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_4_1__?.installed ||
     window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_4__?.installed ||
     window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_3__?.installed ||
     window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_2__?.installed ||
     window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_1__?.installed
   ) {
-    console.warn("[Zxtract] An earlier extractor is installed. Reload Zynerd before installing v1.4.2.");
+    console.warn("[Zxtract] An earlier extractor is installed. Reload Zynerd before installing v1.5.0.");
     return;
   }
 
@@ -45,7 +46,8 @@
     status: null,
     stats: null,
     startButton: null,
-    recoverExistingFile: false
+    recoverExistingFile: false,
+    hasRecords: false
   };
   window[KEY] = state;
 
@@ -76,8 +78,10 @@
     const writer = await state.file.createWritable({ keepExistingData: true });
     try {
       await writer.seek(current.size);
-      await writer.write(text);
+      if (text && state.hasRecords) await writer.write(",");
+      if (text) await writer.write(text);
       await writer.close();
+      if (text) state.hasRecords = true;
     } catch (error) {
       try { await writer.abort(); } catch (_) {}
       throw error;
@@ -95,13 +99,15 @@
       if (!state.active) return;
 
       if (recordCount < 50) {
-        cleanup("Complete. Saved final page (" + recordCount + " records). XHR hooks removed.");
+        await append("]");
+        cleanup("Complete. Saved final page (" + recordCount + " records). Valid JSON file closed. XHR hooks removed.");
         return;
       }
 
       const next = document.querySelector('a[aria-label="Next page"]');
       if (!next) {
-        cleanup("Saved offset " + offset + ". Next control not found; stopped safely.");
+        await append("]");
+        cleanup("Saved offset " + offset + ". Next control not found; valid JSON file closed.");
         return;
       }
 
@@ -114,7 +120,8 @@
         /disabled/i.test(String(next.className) + " " + String(parent?.className || ""));
 
       if (disabled) {
-        cleanup("Saved offset " + offset + ". Next is disabled; capture complete. XHR hooks removed.");
+        await append("]");
+        cleanup("Saved offset " + offset + ". Next is disabled; valid JSON file closed. XHR hooks removed.");
         return;
       }
 
@@ -161,22 +168,22 @@
       return;
     }
 
-    // Build only the final JSONL string. Do not retain the API records in the write queue.
-    let output = "";
+    // Build only the final JSON fragment. Do not retain the API records in the write queue.
+    const outputRecords = [];
     const count = records.length;
     for (let i = 0; i < count; i++) {
       const record = records[i];
-      output += JSON.stringify({
+      outputRecords.push(JSON.stringify({
         rank: record?.rank ?? null,
         institute_id: record?.institute?.id ?? null,
         institute: record?.institute?.name ?? null,
         course: record?.course?.name ?? null,
         quota: record?.quota?.name ?? null,
         category: record?.category ?? null
-      }) + "\n";
+      }));
     }
 
-    finishPage(count, request.offset, output);
+    finishPage(count, request.offset, outputRecords.join(","));
     payload = null;
   }
 
@@ -266,8 +273,8 @@
           const [selected] = await window.showOpenFilePicker({
             multiple: false,
             types: [{
-              description: "JSON Lines",
-              accept: { "text/plain": [".jsonl"] }
+              description: "JSON",
+              accept: { "application/json": [".json"] }
             }]
           });
           handle = selected;
@@ -287,10 +294,10 @@
         try {
           const date = new Date().toISOString().slice(0, 10);
           handle = await window.showSaveFilePicker({
-            suggestedName: "andhra-pradesh-government-quota-" + date + ".jsonl",
+            suggestedName: "R1.json",
             types: [{
-              description: "JSON Lines",
-              accept: { "text/plain": [".jsonl"] }
+              description: "JSON",
+              accept: { "application/json": [".json"] }
             }]
           });
         } catch (error) {
@@ -308,6 +315,7 @@
       update("File selected. Initializing output file…");
       try {
         const initial = await handle.createWritable();
+        await initial.write("[");
         await initial.close();
       } catch (error) {
         update("File selected, but initialization failed: " +
@@ -317,6 +325,7 @@
       }
 
       state.file = handle;
+      state.hasRecords = false;
       state.recoverExistingFile = false;
       start.textContent = "Choose file & start";
       state.queue = Promise.resolve();
@@ -337,5 +346,5 @@
   }
 
   installPanel();
-  console.info("[Zxtract] v1.4.2 installed. Android file-picker recovery is enabled; XHR hooks are removed on completion or error.");
+  console.info("[Zxtract] v1.5.0 installed. Writes a valid JSON array incrementally and includes Android file-picker recovery.");
 })();
