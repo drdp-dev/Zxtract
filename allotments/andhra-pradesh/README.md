@@ -59,6 +59,9 @@ No other source fields, nested objects, capture timestamps, or extractor metadat
 - Appends one JSON object per line.
 - Serializes writes through a promise queue.
 - Skips repeated offsets within the current capture session.
+- Starts only after a page is loaded manually after capture begins; it does not assume the already-rendered table was captured.
+- Automatically clicks `a[aria-label="Next page"]` only after the current page's write has completed successfully.
+- Stops on a short page, a missing Next control, a disabled Next control, or a write failure.
 - Does not issue independent API requests or store the complete dataset in memory.
 - Keeps only page offsets and counters in memory.
 
@@ -67,7 +70,8 @@ No other source fields, nested objects, capture timestamps, or extractor metadat
 - [ ] Panel appears after executing the script.
 - [ ] File picker creates a `.jsonl` file with the correct extension.
 - [ ] First page (offset 0) writes 50 records.
-- [ ] Next page appends records rather than overwriting.
+- [ ] Next page is clicked automatically only after the preceding 50 records are saved.
+- [ ] The final short page is saved without another Next click.
 - [ ] Each line contains exactly the six documented fields.
 - [ ] Repeated page offsets are skipped.
 - [ ] Stop waits for queued writes to finish.
@@ -76,4 +80,5 @@ No other source fields, nested objects, capture timestamps, or extractor metadat
 ### Change log
 
 - 2026-11-22: Live diagnostic identified the actual allotments endpoint and six-field response schema.
-- 2026-11-22: Extractor corrected to capture the Andhra Pradesh counselling table and emit only the six requested fields. Live end-to-end validation pending.
+- 2026-11-22: Extractor corrected to capture the Andhra Pradesh counselling table and emit only the six requested fields. Manual two-page capture produced 100 records.
+- 2026-11-22: v1.2.0 adds save-gated automatic pagination; automatic multi-page run still requires live validation.
