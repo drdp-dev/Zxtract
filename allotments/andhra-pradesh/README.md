@@ -6,7 +6,7 @@ Dataset-specific scripts for Andhra Pradesh postgraduate medical allotment data.
 
 Script: [`government-quota.js`](./government-quota.js)
 
-Status: **v1.3.0 memory-reduction changes committed; live 35-page validation pending.**
+Status: **v1.4.0 simplified single-button interface committed; live 35-page validation pending.**
 
 ### Confirmed source contract
 
@@ -48,7 +48,7 @@ No other source fields, nested objects, capture timestamps, or extractor metadat
    - The selected file is cleared when a new capture starts. Use a new filename to preserve an earlier capture.
 7. Trigger one page load manually after starting capture. For example, switch the rank view or navigate to page 1 if you are currently on page 2. This first captured page starts automatic pagination.
 8. After each page is fully written and the file writer is closed, the script clicks **Next** and captures the following page. Do not click Next manually while automation is running.
-9. Use **Pause**, **Resume**, and **Stop** as needed. After resuming, click **Next** once to continue. Stop waits for queued writes and restores the original XHR methods.
+9. Monitor the live page and record counts in the panel. The script restores the original XHR methods automatically when capture completes or encounters an error.
 10. Inspect the JSONL output and compare its record count with the table.
 
 ### Capture behaviour
@@ -65,7 +65,7 @@ No other source fields, nested objects, capture timestamps, or extractor metadat
 - Stops on a short page, a missing Next control, a disabled Next control, or a write failure.
 - Builds each page's six-field JSONL text immediately; the asynchronous write queue retains only that text, not the API record array or XHR object.
 - Uses one shared `loadend` handler rather than a per-request closure over each XHR object.
-- Removes its XHR method overrides when stopped, when the final page is reached, or after a capture/write error.
+- Removes its XHR method overrides when the final page is reached or after a capture, request, or write error.
 - Does not issue independent API requests or store the complete dataset in memory.
 
 ### Validation checklist
@@ -77,7 +77,7 @@ No other source fields, nested objects, capture timestamps, or extractor metadat
 - [ ] The final short page is saved without another Next click.
 - [ ] Each line contains exactly the six documented fields.
 - [ ] XHR method overrides are restored when capture stops or completes.
-- [ ] Stop waits for queued writes to finish.
+- [ ] Live status and record counts update after each saved page.
 - [ ] Final record count matches the table's total.
 
 ### Change log
@@ -85,4 +85,5 @@ No other source fields, nested objects, capture timestamps, or extractor metadat
 - 2026-11-22: Live diagnostic identified the actual allotments endpoint and six-field response schema.
 - 2026-11-22: Extractor corrected to capture the Andhra Pradesh counselling table and emit only the six requested fields. Manual two-page capture produced 100 records.
 - 2026-11-22: v1.2.0 adds save-gated automatic pagination; the first automated run crashed after 10 pages with Eruda active.
-- 2026-11-22: v1.3.0 reduces retained state, queues only projected JSONL text, uses a shared XHR completion handler, and restores XHR methods on stop/completion. Full 35-page validation pending.
+- 2026-11-22: v1.3.0 reduces retained state, queues only projected JSONL text, uses a shared XHR completion handler, and restores XHR methods on completion/error. Full 35-page validation pending.
+- 2026-11-22: v1.4.0 removes pause, resume, stop, and hide controls; the panel now has one start button and live capture status.
