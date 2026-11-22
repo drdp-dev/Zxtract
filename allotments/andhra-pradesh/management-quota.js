@@ -13,7 +13,7 @@
 (() => {
   "use strict";
 
-  const KEY = "__ZXTRACT_AP_MANAGEMENT_QUOTA_V1_5_8__";
+  const KEY = "__ZXTRACT_AP_MANAGEMENT_QUOTA_V1_0_0__";
   const ENDPOINT = "/api_v2/allotments/table_data";
   const COUNSELLING_ID = "4";
 
