@@ -42,6 +42,7 @@
     errors: 0,
     status: null,
     stats: null,
+    startButton: null
   };
   window[KEY] = state;
 
@@ -57,6 +58,7 @@
       state.stats.textContent = "Pages " + state.pages +
         " · Records " + state.records + " · Errors " + state.errors;
     }
+    if (state.startButton) state.startButton.disabled = state.active;
   }
 
   function cleanup(message) {
@@ -129,7 +131,7 @@
     if (!state.active || !request || request.method !== "POST") return;
     if (xhr.status < 200 || xhr.status >= 300) {
       state.errors++;
-      update("Request failed at offset " + request.offset + " (HTTP " + xhr.status + ").");
+      cleanup("Request failed at offset " + request.offset + " (HTTP " + xhr.status + "). Capture stopped.");
       return;
     }
 
@@ -144,7 +146,7 @@
       }
     } catch (error) {
       state.errors++;
-      update("Could not parse response at offset " + request.offset + ".");
+      cleanup("Could not parse response at offset " + request.offset + ". Capture stopped.");
       console.warn("[Zxtract] Response parse failed:", error);
       return;
     }
@@ -152,7 +154,7 @@
     const records = payload?.data?.records;
     if (!Array.isArray(records)) {
       state.errors++;
-      update("Response at offset " + request.offset + " has no data.records array.");
+      cleanup("Response at offset " + request.offset + " has no data.records array. Capture stopped.");
       return;
     }
 
@@ -281,9 +283,10 @@
 
     state.status = status;
     state.stats = stats;
+    state.startButton = start;
     update("Ready. Choose an output file.");
   }
 
   installPanel();
-  console.info("[Zxtract] v1.4.0 installed. Minimal capture mode; XHR hooks are removed on stop or completion.");
+  console.info("[Zxtract] v1.4.0 installed. One start button with live status; XHR hooks are removed on completion or error.");
 })();
