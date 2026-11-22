@@ -48,7 +48,7 @@ The extractor uses the same Zynerd table endpoint as Government Quota, but match
 
 Each JSON object contains exactly these six fields:
 
-- `ai_rank`
+- `rank` (sourced from the API’s `ai_rank` field)
 - `institute_id`
 - `institute`
 - `course`
