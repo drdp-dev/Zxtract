@@ -6,7 +6,7 @@
  * Choose an output file, then trigger one page load manually.
  * Each subsequent Next click occurs only after the preceding page is saved.
  *
- * JSON fields: round, rank, ai_rank, counselling_rank, institute_id, institute, course, quota, category, state, inservice_candidate
+ * JSON fields: ai_rank, institute_id, institute, course, quota, category
  * POST /api_v2/allotments/table_data?counselling_id=4&offset=N
  */
 
@@ -176,17 +176,12 @@
     for (let i = 0; i < count; i++) {
       const record = records[i];
       const formatted = JSON.stringify({
-        round: record?.round ?? null,
-        rank: record?.rank ?? null,
         ai_rank: record?.ai_rank ?? null,
-        counselling_rank: record?.counselling_rank ?? null,
         institute_id: record?.institute?.id ?? null,
         institute: record?.institute?.name ?? null,
         course: record?.course?.name ?? null,
         quota: record?.quota?.name ?? null,
-        category: record?.category ?? null,
-        state: record?.state ?? null,
-        inservice_candidate: record?.inservice_candidate ?? null
+        category: record?.category ?? null
       }, null, 2);
       outputRecords.push("  " + formatted.replaceAll("\n", "\n  "));
     }
