@@ -1,6 +1,6 @@
 /**
  * Zxtract — Andhra Pradesh Government Quota (Zynerd)
- * Version: 1.5.7
+ * Version: 1.5.8
  *
  * Load from the Zxtract bookmarklet launcher on the Zynerd allotments page.
  * Choose an output file, then trigger one page load manually.
@@ -13,25 +13,16 @@
 (() => {
   "use strict";
 
-  const KEY = "__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_5_7__";
+  const KEY = "__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_5_8__";
   const ENDPOINT = "/api_v2/allotments/table_data";
   const COUNSELLING_ID = "3";
 
-  if (
-    window[KEY]?.installed ||
-    window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_5_6__?.installed ||
-    window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_5_5__?.installed ||
-    window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_5_4__?.installed ||
-    window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_5_3__?.installed ||
-    window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_5_1__?.installed ||
-    window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_5_0__?.installed ||
-    window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_4_2__?.installed ||
-    window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_4_1__?.installed ||
-    window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_4__?.installed ||
-    window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_3__?.installed ||
-    window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_2__?.installed ||
-    window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_1__?.installed
-  ) {
+  const alreadyInstalled = Object.keys(window).some(name =>
+    name.startsWith("__ZXTRACT_AP_GOVERNMENT_QUOTA_V") &&
+    window[name]?.installed
+  );
+
+  if (alreadyInstalled) {
     console.warn("[Zxtract] An earlier extractor is installed. Reload Zynerd before installing the extractor again.");
     return;
   }
@@ -452,5 +443,5 @@ function makeDraggable(panel, handle) {
   }
 
   installPanel();
-  console.info("[Zxtract] v1.5.7 installed. Writes a pretty-printed JSON array incrementally, includes Android file-picker recovery, and offers Close after completion.");
+  console.info("[Zxtract] v1.5.8 installed. Writes a pretty-printed JSON array incrementally, includes Android file-picker recovery, and offers Close after completion.");
 })();
