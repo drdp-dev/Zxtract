@@ -280,7 +280,7 @@
           handle = selected;
         } catch (error) {
           if (error?.name === "AbortError") {
-            update("No file selected. Tap Select saved file to try again.");
+            update("No file selected. Tap Select created file to try again.");
           } else {
             update("Could not reopen file: " + (error?.name || "Error") + " — " + (error?.message || String(error)));
           }
@@ -303,8 +303,8 @@
         } catch (error) {
           if (error?.name === "AbortError") {
             state.recoverExistingFile = true;
-            start.textContent = "Select saved file";
-            update("The Android file picker closed without returning its file handle. If it created the file, tap Select saved file and choose it.");
+            start.textContent = "Select created file";
+            update("File created. Select the file to continue.");
           } else {
             update("File picker failed: " + (error?.name || "Error") + " — " + (error?.message || String(error)));
           }
