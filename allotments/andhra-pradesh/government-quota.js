@@ -344,7 +344,7 @@
       try {
         initial = await handle.createWritable();
         update("File opened. Writing JSON header…");
-        await initial.write("[\\n");
+        await initial.write("[\n");
         update("JSON header written. Finalizing file…");
         await initial.close();
       } catch (error) {
