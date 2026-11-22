@@ -46,9 +46,10 @@ No other source fields, nested objects, capture timestamps, or extractor metadat
 5. The **Zxtract · AP Government Quota** panel should appear.
 6. Tap **Choose file & start** and select a new `.jsonl` file.
    - The selected file is cleared when a new capture starts. Use a new filename to preserve an earlier capture.
-7. Paginate through the table normally. Each matching successful XHR response is projected to the six output fields and appended to the file.
-8. Use **Pause**, **Resume**, and **Stop** as needed. Stop waits for queued writes to finish.
-9. Inspect the JSONL output and compare its record count with the table.
+7. Trigger one page load manually after starting capture. For example, switch the rank view or navigate to page 1 if you are currently on page 2. This first captured page starts automatic pagination.
+8. After each page is fully written and the file writer is closed, the script clicks **Next** and captures the following page. Do not click Next manually while automation is running.
+9. Use **Pause**, **Resume**, and **Stop** as needed. Stop waits for queued writes to finish.
+10. Inspect the JSONL output and compare its record count with the table.
 
 ### Capture behaviour
 
