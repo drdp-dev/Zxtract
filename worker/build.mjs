@@ -1,19 +1,22 @@
-import { cp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, "..");
-const allotmentsRoot = path.join(repoRoot, "allotments");
 const publicRoot = path.join(here, "public");
+const excludedDirectories = new Set([".git", ".github", "node_modules", "worker"]);
 
 async function walk(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
   const files = [];
   for (const entry of entries) {
     const absolute = path.join(directory, entry.name);
-    if (entry.isDirectory()) files.push(...await walk(absolute));
-    else if (entry.isFile() && entry.name.endsWith(".js") && !entry.name.includes("bookmarklet")) {
+    if (entry.isDirectory()) {
+      if (!excludedDirectories.has(entry.name) && !entry.name.startsWith(".")) {
+        files.push(...await walk(absolute));
+      }
+    } else if (entry.isFile() && entry.name.endsWith(".js") && !entry.name.includes("bookmarklet")) {
       files.push(absolute);
     }
   }
@@ -30,26 +33,27 @@ function titleFromSource(source, relativePath) {
     .join(" ");
 }
 
-await rm(publicRoot, { recursive: true, force: true });
-await mkdir(publicRoot, { recursive: true });
-await cp(allotmentsRoot, path.join(publicRoot, "allotments"), { recursive: true });
-await cp(path.join(here, "launcher.js"), path.join(publicRoot, "launcher.js"));
-
-const scriptFiles = (await walk(allotmentsRoot)).sort();
+const scriptFiles = (await walk(repoRoot)).sort();
 const scripts = [];
 for (const absolute of scriptFiles) {
   const relativePath = path.relative(repoRoot, absolute).split(path.sep).join("/");
+  const destination = path.join(publicRoot, relativePath);
+  await mkdir(path.dirname(destination), { recursive: true });
+  await writeFile(destination, await readFile(absolute));
+
   const source = await readFile(absolute, "utf8");
   const version = source.match(/Version:\s*([^\r\n*]+)/i)?.[1]?.trim() ?? null;
   const segments = relativePath.split("/");
   scripts.push({
     path: relativePath,
     title: titleFromSource(source, relativePath),
-    category: segments.length > 2 ? segments.slice(1, -1).join(" / ") : "General",
+    category: segments.length > 1 ? segments.slice(0, -1).join(" / ") : "General",
     version
   });
 }
 
+await mkdir(publicRoot, { recursive: true });
+await writeFile(path.join(publicRoot, "launcher.js"), await readFile(path.join(here, "launcher.js")));
 await writeFile(
   path.join(publicRoot, "scripts-manifest.json"),
   JSON.stringify({ generatedAt: new Date().toISOString(), scripts }, null, 2) + "\n"
