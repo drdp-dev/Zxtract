@@ -47,7 +47,8 @@ for (const absolute of scriptFiles) {
   scripts.push({
     path: relativePath,
     title: titleFromSource(source, relativePath),
-    category: segments.length > 1 ? segments.slice(0, -1).join(" / ") : "General",
+    category: segments[0] === "allotments" ? "Extractor" :
+      segments[0] === "diagnostics" ? "Diagnostics" : "General",
     version
   });
 }
