@@ -59,10 +59,11 @@ export default {
       }
 
       if (
-        !relativePath.startsWith("allotments/") ||
-        !relativePath.endsWith(".js") ||
-        relativePath.includes("..") ||
-        relativePath.includes("\\")
+        !relativePath ||
+        relativePath.startsWith("/") ||
+        relativePath.split("/").some(segment => !segment || segment === "." || segment === "..") ||
+        relativePath.includes("\\") ||
+        !relativePath.endsWith(".js")
       ) {
         return json({ error: "Invalid script path" }, 400);
       }
