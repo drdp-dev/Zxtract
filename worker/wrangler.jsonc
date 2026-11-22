@@ -3,6 +3,14 @@
   "name": "zxtract",
   "main": "src/index.js",
   "compatibility_date": "2026-11-22",
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [
+    {
+      "pattern": "zxtract.drdp.dev",
+      "custom_domain": true
+    }
+  ],
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
