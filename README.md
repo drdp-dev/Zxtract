@@ -1,6 +1,6 @@
 # Zxtract
 
-A version-controlled collection of modular browser-side data extraction scripts and operating instructions.
+A version controlled collection of modular browser-side data extraction scripts and operating instructions.
 
 ## Repository layout
 
