@@ -6,13 +6,14 @@ A version-controlled collection of modular browser-side data extraction scripts 
 
 ```text
 allotments/
-  ap/
+  andhra-pradesh/
     README.md
     government-quota.js
 ```
 
 ## Conventions
 
+- Use full, lowercase, hyphenated state and union-territory names in directory paths.
 - Keep each dataset/source workflow in its own script.
 - Keep source-specific setup, execution, pagination, output schema, and troubleshooting instructions beside the script.
 - Prefer small, independently maintainable modules over one universal scraper.
