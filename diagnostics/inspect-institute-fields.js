@@ -1,6 +1,6 @@
 /**
  * Zxtract diagnostics — inspect Zynerd institute fields
- * Version: 1.1.0
+ * Version: 1.2.0
  *
  * Load this from the Zxtract bookmarklet launcher on the Andhra Pradesh
  * Government Quota page. It creates its own on-page panel; no Eruda or
@@ -14,7 +14,7 @@
 (() => {
   "use strict";
 
-  const KEY = "__ZXTRACT_AP_INSTITUTE_DIAGNOSTICS_V1_1__";
+  const KEY = "__ZXTRACT_AP_INSTITUTE_DIAGNOSTICS_V1_2__";
   const ENDPOINT = "/api_v2/allotments/table_data";
   const COUNSELLING_ID = "3";
 
