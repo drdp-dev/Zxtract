@@ -1,6 +1,6 @@
 # Zxtract Worker
 
-A small Cloudflare Worker that exposes the extractor scripts already stored in this repository. It does not proxy counselling-site requests or receive extracted allotment data.
+A small Cloudflare Worker that serves the Zxtract bookmarklet launcher and repository scripts. It does not proxy counselling-site requests or receive extracted allotment data.
 
 ## Cloudflare Workers Builds setup
 
@@ -13,9 +13,19 @@ Connect this repository to Cloudflare Workers Builds and configure:
 | Build command | `npm run build` |
 | Deploy command | `npx wrangler deploy` |
 
-The Worker is configured to use the custom domain `https://zxtract.drdp.dev`. Its Wrangler configuration explicitly disables the `workers.dev` hostname and Preview/Version URLs.
+The Worker uses the custom domain `https://zxtract.drdp.dev`. Its Wrangler configuration disables the `workers.dev` hostname and Preview/Version URLs.
 
-The build script discovers executable JavaScript files throughout the repository, excluding the `worker/` implementation, hidden folders, dependency folders, and files whose names contain `bookmarklet`. It copies each script into the generated static assets using its exact repository-relative path and generates `scripts-manifest.json`.
+## Script discovery and categories
+
+The build discovers executable JavaScript files throughout the repository, excluding the `worker/` implementation, hidden folders, dependency folders, and files whose names contain `bookmarklet`. It copies each script to the generated static assets using its exact repository-relative path and generates `scripts-manifest.json`.
+
+Categories are assigned from the top-level directory:
+
+- `allotments/` → **Extractor**
+- `diagnostics/` → **Diagnostics**
+- Other eligible locations → **General**
+
+This means new extractor and diagnostic scripts automatically appear under the correct category without changing the launcher. Keep all extraction scripts under `allotments/` and all diagnostic scripts under `diagnostics/`.
 
 No GitHub API token, Worker secret, database, or external runtime dependency is required. Git-connected deployment checks out the repository and builds the assets directly.
 
@@ -23,8 +33,8 @@ No GitHub API token, Worker secret, database, or external runtime dependency is 
 
 - `/` — Worker status page
 - `/health` — health check
-- `/api/scripts` — generated extractor catalogue
-- `/launcher.js` — launcher interface code
+- `/api/scripts` — generated script catalogue, including category and title
+- `/launcher.js` — launcher interface
 - `/scripts/<repository-relative-path>` — an individual repository script
 
 For example, `allotments/andhra-pradesh/government-quota.js` is served at:
@@ -33,7 +43,7 @@ For example, `allotments/andhra-pradesh/government-quota.js` is served at:
 https://zxtract.drdp.dev/scripts/allotments/andhra-pradesh/government-quota.js
 ```
 
-The catalogue is generated on every build, so adding a JavaScript extractor anywhere in the repository (outside the excluded directories) makes it appear in the launcher after the next successful deployment. The original folder hierarchy is retained.
+The catalogue is generated on every build. The original folder hierarchy is retained in script URLs, while the launcher groups scripts under the top-level **Extractor** and **Diagnostics** categories.
 
 ## Permanent bookmarklet
 
@@ -43,11 +53,13 @@ Save the following one-line value as a Chrome bookmark URL:
 javascript:(()=>{const s=document.createElement("script");s.src="https://zxtract.drdp.dev/launcher.js";s.async=true;s.onerror=()=>alert("Zxtract launcher could not load. Check the Worker URL or the site's Content Security Policy.");document.documentElement.appendChild(s)})()
 ```
 
-Tap the bookmark on a counselling page to load the launcher. Select an extractor and load it. The launcher obtains the catalogue and selected script from the Worker.
+Tap the bookmark on a supported counselling page to open the launcher. Choose a script from **Extractor** or **Diagnostics**, then tap **Load selected extractor**. The launcher obtains the catalogue and selected script from the Worker.
+
+The launcher and script popups are draggable by their top handle. Each popup saves its own position in the current website's `localStorage` and restores it on reload.
 
 ## Browser security note
 
-The launcher injects a classic external script from the Worker into the current page. A target website's Content Security Policy may block that script. If Zynerd blocks it, the launcher reports a loading error; the deployed Worker itself cannot override the target page's CSP. Test this on Zynerd after deployment before relying on the launcher.
+The launcher injects a classic external script from the Worker into the current page. A target website's Content Security Policy may block that script. If blocked, the launcher reports a loading error; the Worker cannot override the target page's CSP.
 
 ## Local build
 
