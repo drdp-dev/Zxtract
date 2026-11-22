@@ -73,15 +73,15 @@
     update(message || "Stopped. XHR hooks removed.");
   }
 
-  async function append(text) {
+  async function append(text, isRecordChunk = true) {
     const current = await state.file.getFile();
     const writer = await state.file.createWritable({ keepExistingData: true });
     try {
       await writer.seek(current.size);
-      if (text && state.hasRecords) await writer.write(",");
+      if (text && isRecordChunk && state.hasRecords) await writer.write(",");
       if (text) await writer.write(text);
       await writer.close();
-      if (text) state.hasRecords = true;
+      if (text && isRecordChunk) state.hasRecords = true;
     } catch (error) {
       try { await writer.abort(); } catch (_) {}
       throw error;
@@ -99,7 +99,7 @@
       if (!state.active) return;
 
       if (recordCount < 50) {
-        await append("]");
+        await append("]", false);
         cleanup("Complete. Saved final page (" + recordCount + " records). Valid JSON file closed. XHR hooks removed.");
         return;
       }
