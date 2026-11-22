@@ -46,12 +46,14 @@ The extractor uses the same Zynerd table endpoint as Government Quota, but match
 
 ### Output schema
 
-Each JSON object contains:
+Each JSON object contains exactly these six fields:
 
-- `round`
-- `rank`, `ai_rank`, `counselling_rank` (kept separately)
-- `institute_id`, `institute`, `course`, `quota`
-- `category`, `state`, `inservice_candidate`
+- `ai_rank`
+- `institute_id`
+- `institute`
+- `course`
+- `quota`
+- `category`
 
 Nested institute, course, and quota values are flattened to their IDs/names. Missing values are written as JSON `null`.
 
