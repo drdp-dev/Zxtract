@@ -20,7 +20,7 @@ This is intentionally a two-page test, not the full 35-page extractor. It keeps 
 
 Script: [`government-quota.js`](./government-quota.js)
 
-Status: **v1.4.2 adds recovery for Android file-manager providers that create the file but reject the save-picker promise; live 35-page validation pending.**
+Status: **v1.5.0 writes a valid JSON array incrementally, retains Android file-picker recovery, and suggests `R1.json`; live 35-page validation pending.**
 
 ### Confirmed source contract
 
@@ -38,7 +38,7 @@ The endpoint and response were confirmed on 2026-11-22. Recheck if Zynerd change
 
 ### Exact output schema
 
-Each JSONL line contains exactly these six fields:
+Each JSON array object contains exactly these six fields:
 
 | Output field | Source |
 |---|---|
@@ -58,9 +58,9 @@ No other source fields, nested objects, capture timestamps, or extractor metadat
 3. Copy the complete contents of `government-quota.js` from this repository.
 4. Paste and execute it once.
 5. The **Zxtract · AP Government Quota** panel should appear.
-6. Tap **Choose file & start** and select a new `.jsonl` file.
+6. Tap **Choose file & start** and select a new `.json` file.
    - If Android creates the file but the save picker reports an `AbortError`, the button changes to **Select saved file**. Tap it and select the file Android just created. The extractor then initializes that file and starts normally.
-   - The selected file is cleared when a new capture starts. Use a new filename to preserve an earlier capture.
+   - The output is a standard JSON array (`[ ... ]`), not JSONL. The selected file is cleared when a new capture starts. Use a new filename to preserve an earlier capture.
 7. Trigger one page load manually after starting capture. For example, switch the rank view or navigate to page 1 if you are currently on page 2. This first captured page starts automatic pagination.
 8. After each page is fully written and the file writer is closed, the script clicks **Next** and captures the following page. Do not click Next manually while automation is running.
 9. Monitor the live page and record counts in the panel. The script restores the original XHR methods automatically when capture completes or encounters an error.
@@ -72,13 +72,13 @@ No other source fields, nested objects, capture timestamps, or extractor metadat
 - Reads the `offset` query parameter to identify pages.
 - Accepts successful 2xx responses containing an array at `data.records`.
 - Writes only the six fields listed above.
-- Appends one JSON object per line.
+- Appends JSON objects incrementally inside one valid JSON array.
 - Serializes writes through a promise queue.
 - Relies on sequential pagination rather than retaining a Set of every processed offset.
 - Starts only after a page is loaded manually after capture begins; it does not assume the already-rendered table was captured.
 - Automatically clicks `a[aria-label="Next page"]` only after the current page's write has completed successfully.
 - Stops on a short page, a missing Next control, a disabled Next control, or a write failure.
-- Builds each page's six-field JSONL text immediately; the asynchronous write queue retains only that text, not the API record array or XHR object.
+- Builds each page's six-field JSON fragment immediately; the asynchronous write queue retains only that text, not the API record array or XHR object.
 - Uses one shared `loadend` handler rather than a per-request closure over each XHR object.
 - Removes its XHR method overrides when the final page is reached or after a capture, request, or write error.
 - Does not issue independent API requests or store the complete dataset in memory.
@@ -105,3 +105,4 @@ No other source fields, nested objects, capture timestamps, or extractor metadat
 - 2026-11-22: v1.4.1 separates file selection from file initialization so an initialization AbortError is no longer mislabeled as a cancelled selection.
 
 - 2026-11-22: v1.4.2 adds a second, user-initiated open-file picker after an Android save-picker `AbortError`, allowing the extractor to recover the file that the file manager created but whose handle was not returned.
+- 2026-11-22: v1.5.0 changes the output to a valid JSON array, written incrementally page by page, and suggests `R1.json` as the filename.
