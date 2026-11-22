@@ -1,6 +1,6 @@
 /**
  * Zxtract diagnostics — inspect Zynerd institute fields
- * Version: 1.2.0
+ * Version: 1.3.0
  *
  * Load this from the Zxtract bookmarklet launcher on the Andhra Pradesh
  * Government Quota page. It creates its own on-page panel; no Eruda or
@@ -14,7 +14,7 @@
 (() => {
   "use strict";
 
-  const KEY = "__ZXTRACT_AP_INSTITUTE_DIAGNOSTICS_V1_2__";
+  const KEY = "__ZXTRACT_AP_INSTITUTE_DIAGNOSTICS_V1_3__";
   const ENDPOINT = "/api_v2/allotments/table_data";
   const COUNSELLING_ID = "3";
 
@@ -69,43 +69,70 @@
   panel.append(dragHandle, heading, status, actions);
   document.body.appendChild(panel);
 
-  function makeDraggable(panel, handle) {
+function makeDraggable(panel, handle) {
+    const storageKey = "zxtract-position-institute-diagnostics-v1";
+    const readPosition = () => {
+      try {
+        const saved = JSON.parse(localStorage.getItem(storageKey) || "null");
+        if (saved && Number.isFinite(saved.left) && Number.isFinite(saved.top)) return saved;
+      } catch (_) {}
+      return null;
+    };
+    const savePosition = () => {
+      const rect = panel.getBoundingClientRect();
+      try {
+        localStorage.setItem(storageKey, JSON.stringify({
+          left: Math.round(rect.left),
+          top: Math.round(rect.top)
+        }));
+      } catch (_) {}
+    };
+    const applyPosition = (left, top) => {
+      const maxLeft = Math.max(0, window.innerWidth - panel.offsetWidth);
+      const maxTop = Math.max(0, window.innerHeight - panel.offsetHeight);
+      const x = Math.min(maxLeft, Math.max(0, left));
+      const y = Math.min(maxTop, Math.max(0, top));
+      panel.style.left = x + "px";
+      panel.style.top = y + "px";
+      panel.style.right = "auto";
+      panel.style.bottom = "auto";
+      panel.style.margin = "0";
+    };
+
+    const saved = readPosition();
+    if (saved) applyPosition(saved.left, saved.top);
+
     let drag = null;
     handle.style.cssText += ";touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none;";
     handle.addEventListener("pointerdown", event => {
       if (event.button !== 0 && event.pointerType === "mouse") return;
       const rect = panel.getBoundingClientRect();
       drag = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, left: rect.left, top: rect.top };
-      panel.style.left = rect.left + "px";
-      panel.style.top = rect.top + "px";
-      panel.style.right = "auto";
-      panel.style.bottom = "auto";
-      panel.style.margin = "0";
+      applyPosition(rect.left, rect.top);
       handle.style.cursor = "grabbing";
       try { handle.setPointerCapture(event.pointerId); } catch (_) {}
       event.preventDefault();
     });
     handle.addEventListener("pointermove", event => {
       if (!drag || event.pointerId !== drag.pointerId) return;
-      const maxLeft = Math.max(0, window.innerWidth - panel.offsetWidth);
-      const maxTop = Math.max(0, window.innerHeight - panel.offsetHeight);
-      panel.style.left = Math.min(maxLeft, Math.max(0, drag.left + event.clientX - drag.x)) + "px";
-      panel.style.top = Math.min(maxTop, Math.max(0, drag.top + event.clientY - drag.y)) + "px";
+      applyPosition(drag.left + event.clientX - drag.x, drag.top + event.clientY - drag.y);
     });
     const stop = event => {
       if (!drag || event.pointerId !== drag.pointerId) return;
       drag = null;
       handle.style.cursor = "grab";
+      savePosition();
     };
     handle.addEventListener("pointerup", stop);
     handle.addEventListener("pointercancel", stop);
     window.addEventListener("resize", () => {
-      if (!panel.style.left || !panel.style.top) return;
       const rect = panel.getBoundingClientRect();
-      panel.style.left = Math.min(Math.max(0, rect.left), Math.max(0, window.innerWidth - rect.width)) + "px";
-      panel.style.top = Math.min(Math.max(0, rect.top), Math.max(0, window.innerHeight - rect.height)) + "px";
+      applyPosition(rect.left, rect.top);
+      if (saved || panel.dataset.zxtractMoved === "true") savePosition();
     });
+    handle.addEventListener("pointerdown", () => { panel.dataset.zxtractMoved = "true"; });
   }
+
 
   makeDraggable(panel, dragHandle);
   state.panel = panel;
@@ -238,5 +265,5 @@
   proto.open = wrappedOpen;
   proto.send = wrappedSend;
 
-  console.info("[Zxtract diagnostics] v1.1.0 installed. Use the on-page panel; no dev-tools output is required.");
+  console.info("[Zxtract diagnostics] v1.3.0 installed. Use the on-page panel; no dev-tools output is required.");
 })();
