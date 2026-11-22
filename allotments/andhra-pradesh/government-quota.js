@@ -337,17 +337,24 @@
         }
       }
 
-      update("File selected. Initializing output file…");
+      start.disabled = true;
+      update("File selected. Opening file for writing…");
+      let initial;
       try {
-        const initial = await handle.createWritable();
-        await initial.write("[\n");
+        initial = await handle.createWritable();
+        update("File opened. Writing JSON header…");
+        await initial.write("[\\n");
+        update("JSON header written. Finalizing file…");
         await initial.close();
       } catch (error) {
-        update("File selected, but initialization failed: " +
+        try { await initial?.abort(); } catch (_) {}
+        start.disabled = false;
+        update("File initialization failed: " +
           (error?.name || "Error") + " — " + (error?.message || String(error)));
         console.error("[Zxtract] File initialization failed:", error);
         return;
       }
+      start.disabled = false;
 
       state.file = handle;
       state.hasRecords = false;
