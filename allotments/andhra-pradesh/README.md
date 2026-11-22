@@ -6,90 +6,74 @@ Dataset-specific scripts for Andhra Pradesh postgraduate medical allotment data.
 
 Script: [`government-quota.js`](./government-quota.js)
 
-Status: **Implemented; live end-to-end validation pending.**
+Status: **Corrected extractor committed; live end-to-end validation pending.**
 
-### Known source contract
+### Confirmed source contract
 
-Previously observed Zynerd request:
+Observed directly from the live Zynerd table using the diagnostic script:
 
 - Method: `POST`
-- URL: `https://infra.zynerd.com/api_v2/seat_differences/table_data?offset=50`
-- Pagination: `offset`, 50 records per page
-- POST body:
-  ```json
-  {
-    "session": "2026",
-    "has_joined": false,
-    "displayed_fields": [
-      "state",
-      "institute",
-      "course",
-      "from",
-      "to",
-      "difference",
-      "remark"
-    ],
-    "filter_rank": {}
-  }
-  ```
-- Response record path: `data.records` (inside the JSON response)
-- Previously observed total: 2,776 records
+- URL: `https://infra.zynerd.com/api_v2/allotments/table_data?counselling_id=3&offset=0`
+- Endpoint path: `/api_v2/allotments/table_data`
+- Counselling ID: `3` (Andhra Pradesh Government Quota - PG Medical)
+- Pagination: `offset`, observed page size 50
+- Response record path: `data.records`
+- Diagnostic observation: HTTP 200, 50 records at offset 0
 
-The request and response details above are observations from an earlier session, not a permanent API guarantee. Recheck them if Zynerd changes its table implementation.
+The endpoint and response were confirmed on 2026-11-22. Recheck if Zynerd changes its table implementation.
+
+### Exact output schema
+
+Each JSONL line contains exactly these six fields:
+
+| Output field | Source |
+|---|---|
+| `rank` | `record.rank` |
+| `institute_id` | `record.institute.id` |
+| `institute` | `record.institute.name` |
+| `course` | `record.course.name` |
+| `quota` | `record.quota.name` |
+| `category` | `record.category` |
+
+No other source fields, nested objects, capture timestamps, or extractor metadata are written. Missing values are written as JSON `null`.
 
 ### Run on Android Chrome with Eruda
 
-1. Open the Zynerd seat-differences table in Android Chrome.
+1. Open the Zynerd Andhra Pradesh Government Quota allotments table in Android Chrome.
 2. Open Eruda Console.
-3. Open this repository file and copy the complete contents of `government-quota.js`.
-4. Paste the script into Eruda Console and execute it once.
-5. A **Zxtract · Andhra Pradesh Government Quota** panel should appear on the page.
-6. Tap **Choose file & start** and save a new `.jsonl` file in Downloads or another accessible folder.
-   - Selecting an existing file replaces its contents at the start of capture. Use a new filename to preserve previous captures.
-7. Paginate through the Zynerd table normally. The script captures matching successful XHR responses and appends each page to the selected file.
-8. Use **Pause** before temporarily stopping pagination, **Resume** to continue, and **Stop** to wait for queued writes to finish.
-9. Open the resulting file with a text editor or JSONL viewer and validate the records.
+3. Copy the complete contents of `government-quota.js` from this repository.
+4. Paste and execute it once.
+5. The **Zxtract · AP Government Quota** panel should appear.
+6. Tap **Choose file & start** and select a new `.jsonl` file.
+   - The selected file is cleared when a new capture starts. Use a new filename to preserve an earlier capture.
+7. Paginate through the table normally. Each matching successful XHR response is projected to the six output fields and appended to the file.
+8. Use **Pause**, **Resume**, and **Stop** as needed. Stop waits for queued writes to finish.
+9. Inspect the JSONL output and compare its record count with the table.
 
-Do not start pagination until the panel says **Capturing**.
+### Capture behaviour
 
-### What the script captures
-
-- Only XHR requests whose URL path contains `/api_v2/seat_differences/table_data`.
-- Only successful HTTP responses (2xx) with an array at `data.records`.
-- The complete original record object, including nested `institute` and `course` values.
-- A `_zxtract` object added to each output record, containing extractor ID, source, endpoint, page offset, row index, and capture timestamp.
-
-The script does not issue its own requests, modify Zynerd requests, or require credentials to be copied. It observes the requests made by the open authenticated page.
-
-### Output and memory behaviour
-
-- Output format: JSON Lines (`.jsonl`), one record per line.
-- Each page is serialized and appended to the chosen file.
-- Writes are serialized through a promise queue to avoid concurrent file-write races.
-- Duplicate page responses are skipped using the request offset and POST body as the page key.
-- The script does not retain the complete dataset. It retains lightweight page keys and counters for the current browser session.
-- Avoid logging full response objects in Eruda.
-
-### Troubleshooting
-
-- **Panel does not appear:** confirm the script was executed after the page loaded; execute it once more only after refreshing if necessary.
-- **No records are saved:** confirm the live table still uses the documented endpoint and that its response contains `data.records`.
-- **File picker unavailable:** use Android Chrome in a secure context and check that `showSaveFilePicker` is available.
-- **Write error:** stop pagination, note the displayed error, and preserve the file for inspection before restarting.
-- **Duplicate page skipped:** the same offset and POST body were already captured in this session. Start a fresh capture to reset the in-memory page index.
+- Matches only `POST` XHR requests to `/api_v2/allotments/table_data` with `counselling_id=3`.
+- Reads the `offset` query parameter to identify pages.
+- Accepts successful 2xx responses containing an array at `data.records`.
+- Writes only the six fields listed above.
+- Appends one JSON object per line.
+- Serializes writes through a promise queue.
+- Skips repeated offsets within the current capture session.
+- Does not issue independent API requests or store the complete dataset in memory.
+- Keeps only page offsets and counters in memory.
 
 ### Validation checklist
 
-- [ ] Panel appears after executing the script in Eruda.
-- [ ] File picker creates the selected JSONL file.
-- [ ] First page writes 50 records (or the actual page size returned).
-- [ ] Subsequent offsets append rather than overwrite.
-- [ ] Repeating the same offset and request body does not duplicate a page.
+- [ ] Panel appears after executing the script.
+- [ ] File picker creates a `.jsonl` file with the correct extension.
+- [ ] First page (offset 0) writes 50 records.
+- [ ] Next page appends records rather than overwriting.
+- [ ] Each line contains exactly the six documented fields.
+- [ ] Repeated page offsets are skipped.
 - [ ] Stop waits for queued writes to finish.
-- [ ] JSONL parses line by line and nested institute/course values are intact.
-- [ ] Compare final count with Zynerd's displayed total (historically 2,776).
-- [ ] Record browser/device and validation date after testing.
+- [ ] Final record count matches the table's total.
 
 ### Change log
 
-- 2026-11-22: Initial streaming XHR extractor committed. Live end-to-end validation remains pending.
+- 2026-11-22: Live diagnostic identified the actual allotments endpoint and six-field response schema.
+- 2026-11-22: Extractor corrected to capture the Andhra Pradesh counselling table and emit only the six requested fields. Live end-to-end validation pending.
