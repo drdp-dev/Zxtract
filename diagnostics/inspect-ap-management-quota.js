@@ -164,6 +164,16 @@
     }));
   }
 
+  function safeUrl(raw) {
+    const url = new URL(raw, location.href);
+    for (const key of [...url.searchParams.keys()]) {
+      if (/token|auth|session|password|secret|mobile|phone|email|otp/i.test(key)) {
+        url.searchParams.set(key, "[redacted]");
+      }
+    }
+    return url.href;
+  }
+
   function addEntry(entry) {
     if (state.entries.length >= 12) return;
     state.entries.push(entry);
@@ -207,7 +217,7 @@
           addEntry({
             transport: "XHR",
             method: meta.method,
-            url: new URL(meta.url, location.href).href,
+            url: safeUrl(meta.url),
             status: this.status,
             content_type: contentType,
             request_body: meta.body,
@@ -233,7 +243,7 @@
           clone.json().then(payload => addEntry({
             transport: "fetch",
             method,
-            url: new URL(requestUrl, location.href).href,
+            url: safeUrl(requestUrl),
             status: response.status,
             content_type: contentType,
             request_body: requestBody,
