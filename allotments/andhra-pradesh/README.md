@@ -4,6 +4,20 @@ Dataset-specific scripts for Andhra Pradesh postgraduate medical allotment data.
 
 ## Government quota — Zynerd
 
+## Standalone bookmarklet test (no Eruda)
+
+A two-page diagnostic bookmarklet is available at [`government-quota-bookmarklet-test.js`](./government-quota-bookmarklet-test.js).
+
+1. Open the raw file on GitHub and copy its complete contents, including the `javascript:` prefix.
+2. In Chrome, create or edit a bookmark and paste the copied contents into its URL field.
+3. Reload the Zynerd allotments page without opening Eruda.
+4. Tap the bookmark, then tap **Start 2-page test**.
+5. Trigger one page load manually (change page or rank view). The bookmarklet captures that response and automatically clicks Next after processing it.
+6. After two pages, tap **Download JSONL**.
+
+This is intentionally a two-page test, not the full 35-page extractor. It keeps only the test output in memory and downloads it as a Blob; it does not yet implement incremental file writes. Confirm that the downloaded file contains 100 JSONL records before extending the bookmarklet for full capture.
+
+
 Script: [`government-quota.js`](./government-quota.js)
 
 Status: **v1.4.1 improves file-picker error reporting; live 35-page validation pending.**
