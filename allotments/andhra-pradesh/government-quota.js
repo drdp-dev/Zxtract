@@ -1,6 +1,6 @@
 /**
  * Zxtract — Andhra Pradesh Government Quota (Zynerd)
- * Version: 1.5.0
+ * Version: 1.5.1
  *
  * Run in Eruda Console after the Zynerd allotments table loads.
  * Choose an output file, then trigger one page load manually.
@@ -13,12 +13,13 @@
 (() => {
   "use strict";
 
-  const KEY = "__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_5_0__";
+  const KEY = "__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_5_1__";
   const ENDPOINT = "/api_v2/allotments/table_data";
   const COUNSELLING_ID = "3";
 
   if (
     window[KEY]?.installed ||
+    window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_5_0__?.installed ||
     window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_4_2__?.installed ||
     window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_4_1__?.installed ||
     window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_4__?.installed ||
@@ -26,7 +27,7 @@
     window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_2__?.installed ||
     window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_1__?.installed
   ) {
-    console.warn("[Zxtract] An earlier extractor is installed. Reload Zynerd before installing v1.5.0.");
+    console.warn("[Zxtract] An earlier extractor is installed. Reload Zynerd before installing v1.5.1.");
     return;
   }
 
@@ -46,6 +47,7 @@
     status: null,
     stats: null,
     startButton: null,
+    closeButton: null,
     recoverExistingFile: false,
     hasRecords: false
   };
@@ -71,6 +73,12 @@
     if (proto.open === patchedOpen) proto.open = originalOpen;
     if (proto.send === patchedSend) proto.send = originalSend;
     update(message || "Stopped. XHR hooks removed.");
+  }
+
+  async function complete(message) {
+    await append("]", false);
+    cleanup(message + " Valid JSON file closed. XHR hooks removed.");
+    if (state.closeButton) state.closeButton.style.display = "inline-block";
   }
 
   async function append(text, isRecordChunk = true) {
@@ -99,15 +107,13 @@
       if (!state.active) return;
 
       if (recordCount < 50) {
-        await append("]", false);
-        cleanup("Complete. Saved final page (" + recordCount + " records). Valid JSON file closed. XHR hooks removed.");
+        await complete("Complete. Saved final page (" + recordCount + " records).");
         return;
       }
 
       const next = document.querySelector('a[aria-label="Next page"]');
       if (!next) {
-        await append("]", false);
-        cleanup("Saved offset " + offset + ". Next control not found; valid JSON file closed.");
+        await complete("Saved offset " + offset + ". Next control not found.");
         return;
       }
 
@@ -120,8 +126,7 @@
         /disabled/i.test(String(next.className) + " " + String(parent?.className || ""));
 
       if (disabled) {
-        await append("]", false);
-        cleanup("Saved offset " + offset + ". Next is disabled; valid JSON file closed. XHR hooks removed.");
+        await complete("Saved offset " + offset + ". Next is disabled.");
         return;
       }
 
@@ -258,6 +263,12 @@
     start.type = "button";
     start.textContent = "Choose file & start";
     start.style.cssText = "padding:8px 10px;border:0;border-radius:7px;background:#2563eb;color:white;font:600 13px system-ui;min-height:36px;";
+    const close = document.createElement("button");
+    close.type = "button";
+    close.textContent = "Close";
+    close.style.cssText = "display:none;margin-left:8px;padding:8px 12px;border:1px solid #6b7280;border-radius:7px;background:#374151;color:white;font:600 13px system-ui;min-height:36px;";
+    close.addEventListener("click", () => panel.remove());
+
     start.addEventListener("click", async () => {
       let handle;
 
@@ -336,15 +347,16 @@
       update("Capturing. Trigger one page load manually to start.");
     });
 
-    panel.append(heading, status, stats, start);
+    panel.append(heading, status, stats, start, close);
     document.body.appendChild(panel);
 
     state.status = status;
     state.stats = stats;
     state.startButton = start;
+    state.closeButton = close;
     update("Ready. Choose an output file.");
   }
 
   installPanel();
-  console.info("[Zxtract] v1.5.0 installed. Writes a valid JSON array incrementally and includes Android file-picker recovery.");
+  console.info("[Zxtract] v1.5.1 installed. Writes a valid JSON array incrementally, includes Android file-picker recovery, and offers Close after completion.");
 })();
