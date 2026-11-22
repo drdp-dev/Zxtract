@@ -280,7 +280,7 @@
         const stamp = new Date().toISOString().replace(/[:.]/g, "-");
         const handle = await window.showSaveFilePicker({
           suggestedName: "andhra-pradesh-government-quota-" + stamp + ".jsonl",
-          types: [{ description: "JSON Lines", accept: { "application/json": [".jsonl"] } }],
+          types: [{ description: "JSON Lines", accept: { "text/plain": [".jsonl"] } }],
         });
 
         // Start a fresh capture file. If an existing file is selected, its
