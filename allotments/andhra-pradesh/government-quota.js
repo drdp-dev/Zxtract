@@ -1,210 +1,160 @@
 /**
  * Zxtract — Andhra Pradesh Government Quota (Zynerd)
- * Version: 1.0.0
+ * Version: 1.1.0
  *
- * HOW TO RUN
- * 1. Open the Zynerd seat-differences table in Android Chrome.
- * 2. Open Eruda Console and paste this entire file.
- * 3. Use the on-page Zxtract panel to choose an output .jsonl file.
- * 4. Paginate through the table normally. Each matching XHR page is saved.
+ * Run: paste this complete file into Eruda Console on the Zynerd allotments
+ * table, execute it, choose an output file, then paginate normally.
  *
- * IMPORTANT
- * - This hooks XMLHttpRequest only; the known Zynerd table uses POST XHR.
- * - Start capture before changing pages.
- * - Choosing an existing file truncates it at start. Choose a new file to
- *   preserve any previous capture.
- * - The script captures records as returned by the API and adds _zxtract
- *   metadata. It does not alter the site's requests or responses.
+ * Output: JSONL with exactly six fields:
+ * rank, institute_id, institute, course, quota, category
+ *
+ * Confirmed endpoint:
+ * POST /api_v2/allotments/table_data?counselling_id=3&offset=N
  */
 
 (() => {
   "use strict";
 
-  const GLOBAL_KEY = "__ZXTRACT_AP_GOVERNMENT_QUOTA_V1__";
-  const ENDPOINT_PATH = "/api_v2/seat_differences/table_data";
-  const RECORDS_PATH = ["data", "records"];
+  const KEY = "__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_1__";
+  const ENDPOINT = "/api_v2/allotments/table_data";
+  const COUNSELLING_ID = "3";
 
-  if (window[GLOBAL_KEY]?.installed) {
-    console.warn("[Zxtract] Extractor is already installed on this page.");
+  if (window[KEY]?.installed) {
+    console.warn("[Zxtract] Already installed. Reload the page before reinstalling.");
     return;
   }
 
-  if (!window.XMLHttpRequest || !XMLHttpRequest.prototype) {
-    console.error("[Zxtract] XMLHttpRequest is unavailable.");
+  if (!window.XMLHttpRequest) {
+    console.error("[Zxtract] XMLHttpRequest unavailable.");
     return;
   }
 
   const state = {
-    installed: false,
+    installed: true,
     active: false,
-    fileHandle: null,
-    writeQueue: Promise.resolve(),
-    seenPages: new Set(),
-    pagesWritten: 0,
-    recordsWritten: 0,
-    duplicatePages: 0,
+    file: null,
+    queue: Promise.resolve(),
+    seenOffsets: new Set(),
+    pages: 0,
+    records: 0,
+    duplicates: 0,
     errors: 0,
     lastOffset: null,
     panel: null,
     status: null,
     stats: null,
-    startButton: null,
-    pauseButton: null,
-    resumeButton: null,
-    stopButton: null,
+    buttons: {}
   };
+
+  window[KEY] = state;
 
   const originalOpen = XMLHttpRequest.prototype.open;
   const originalSend = XMLHttpRequest.prototype.send;
 
-  function updateUI(message) {
+  function update(message) {
     if (state.status) state.status.textContent = message;
     if (state.stats) {
       state.stats.textContent =
-        "Pages: " + state.pagesWritten +
-        " | Records: " + state.recordsWritten +
-        " | Duplicate pages: " + state.duplicatePages +
-        " | Errors: " + state.errors +
-        (state.lastOffset === null ? "" : " | Last offset: " + state.lastOffset);
+        "Pages " + state.pages +
+        " · Records " + state.records +
+        " · Duplicate pages " + state.duplicates +
+        " · Errors " + state.errors +
+        (state.lastOffset === null ? "" : " · Offset " + state.lastOffset);
     }
-    if (state.startButton) state.startButton.disabled = state.active;
-    if (state.pauseButton) state.pauseButton.disabled = !state.active;
-    if (state.resumeButton) state.resumeButton.disabled = state.active || !state.fileHandle;
-    if (state.stopButton) state.stopButton.disabled = !state.fileHandle;
+    state.buttons.start.disabled = state.active;
+    state.buttons.pause.disabled = !state.active;
+    state.buttons.resume.disabled = state.active || !state.file;
+    state.buttons.stop.disabled = !state.file;
   }
 
-  function getRecords(payload) {
-    let value = payload;
-    for (const key of RECORDS_PATH) {
-      if (!value || typeof value !== "object") return null;
-      value = value[key];
-    }
-    return Array.isArray(value) ? value : null;
-  }
-
-  function getPayload(xhr) {
+  function parseResponse(xhr) {
     try {
       if (xhr.responseType === "json" && xhr.response && typeof xhr.response === "object") {
         return xhr.response;
       }
-      if (typeof xhr.responseText === "string" && xhr.responseText.length) {
+      if (typeof xhr.responseText === "string" && xhr.responseText) {
         return JSON.parse(xhr.responseText);
       }
-      if (xhr.response && typeof xhr.response === "object") {
-        return xhr.response;
-      }
-    } catch (error) {
-      console.warn("[Zxtract] Could not parse matching XHR response:", error);
-    }
+      if (xhr.response && typeof xhr.response === "object") return xhr.response;
+    } catch (_) {}
     return null;
   }
 
-  function makePageKey(requestInfo, records) {
-    const offset = requestInfo.offset === null ? "unknown" : String(requestInfo.offset);
-    const body = typeof requestInfo.body === "string" ? requestInfo.body : "";
-    if (body.length <= 1500) return offset + "|" + body;
-    return offset + "|" + body.slice(0, 1500);
-  }
-
-  async function appendText(text) {
-    const handle = state.fileHandle;
-    if (!handle) throw new Error("No output file selected.");
-
-    const existingFile = await handle.getFile();
-    const writable = await handle.createWritable({ keepExistingData: true });
+  async function append(text) {
+    if (!state.file) throw new Error("No output file selected.");
+    const current = await state.file.getFile();
+    const writer = await state.file.createWritable({ keepExistingData: true });
     try {
-      await writable.seek(existingFile.size);
-      await writable.write(text);
-      await writable.close();
+      await writer.seek(current.size);
+      await writer.write(text);
+      await writer.close();
     } catch (error) {
-      try { await writable.abort(); } catch (_) {}
+      try { await writer.abort(); } catch (_) {}
       throw error;
     }
   }
 
-  function queuePage(records, requestInfo) {
-    const pageKey = makePageKey(requestInfo, records);
-
-    if (state.seenPages.has(pageKey)) {
-      state.duplicatePages += 1;
-      updateUI("Skipped a page already captured (offset " + requestInfo.offset + ").");
+  function capture(records, offset) {
+    if (state.seenOffsets.has(offset)) {
+      state.duplicates++;
+      update("Skipped duplicate page at offset " + offset + ".");
       return;
     }
 
-    // Reserve the page key before queuing so simultaneous duplicate responses
-    // cannot enqueue the same page twice. Release it if the write fails.
-    state.seenPages.add(pageKey);
+    state.seenOffsets.add(offset);
 
-    const capturedAt = new Date().toISOString();
-    const offset = requestInfo.offset;
-    const lines = records.map((record, index) => {
-      const outputRecord =
-        record && typeof record === "object" && !Array.isArray(record)
-          ? { ...record }
-          : { value: record };
+    // Project each API record immediately to the six requested scalar fields.
+    const lines = records.map(record => JSON.stringify({
+      rank: record?.rank ?? null,
+      institute_id: record?.institute?.id ?? null,
+      institute: record?.institute?.name ?? null,
+      course: record?.course?.name ?? null,
+      quota: record?.quota?.name ?? null,
+      category: record?.category ?? null
+    }));
 
-      outputRecord._zxtract = {
-        extractor: "allotments.andhra-pradesh.government-quota",
-        source: "Zynerd",
-        endpoint: ENDPOINT_PATH,
-        offset,
-        rowIndex: index,
-        capturedAt,
-      };
+    const output = lines.length ? lines.join("\n") + "\n" : "";
 
-      return JSON.stringify(outputRecord);
-    });
-
-    const pageText = lines.length ? lines.join("\n") + "\n" : "";
-
-    state.writeQueue = state.writeQueue.then(async () => {
-      if (!pageText) {
-        state.pagesWritten += 1;
-        state.lastOffset = offset;
-        updateUI("Processed empty page at offset " + offset + ".");
-        return;
-      }
-
-      await appendText(pageText);
-      state.pagesWritten += 1;
-      state.recordsWritten += records.length;
+    state.queue = state.queue.then(async () => {
+      if (output) await append(output);
+      state.pages++;
+      state.records += records.length;
       state.lastOffset = offset;
-      updateUI("Saved " + records.length + " records from offset " + offset + ".");
-    }).catch((error) => {
-      state.seenPages.delete(pageKey);
-      state.errors += 1;
-      updateUI("WRITE ERROR: " + (error?.message || String(error)));
-      console.error("[Zxtract] File write failed:", error);
+      update("Saved " + records.length + " records from offset " + offset + ".");
+    }).catch(error => {
+      state.seenOffsets.delete(offset);
+      state.errors++;
+      update("Write failed: " + (error?.message || String(error)));
+      console.error("[Zxtract] Write failed:", error);
     });
   }
 
-  function handleXhrResponse(xhr) {
-    const requestInfo = xhr.__zxtractRequest;
-    if (!requestInfo || !state.active || xhr.status < 200 || xhr.status >= 300) return;
+  function inspect(xhr) {
+    const request = xhr.__zxtractRequest;
+    if (!state.active || !request || xhr.status < 200 || xhr.status >= 300) return;
 
-    const payload = getPayload(xhr);
-    if (!payload) return;
+    const payload = parseResponse(xhr);
+    const records = payload?.data?.records;
 
-    const records = getRecords(payload);
-    if (!records) {
-      console.warn("[Zxtract] Matching endpoint response did not contain data.records.");
+    if (!Array.isArray(records)) {
+      console.warn("[Zxtract] Matching response has no data.records array.");
       return;
     }
 
-    queuePage(records, requestInfo);
+    capture(records, request.offset);
   }
 
   XMLHttpRequest.prototype.open = function(method, url) {
     try {
-      const parsed = new URL(String(url), window.location.href);
-      this.__zxtractRequest = parsed.pathname.includes(ENDPOINT_PATH)
+      const parsed = new URL(String(url), location.href);
+      const matches =
+        parsed.pathname === ENDPOINT &&
+        parsed.searchParams.get("counselling_id") === COUNSELLING_ID;
+
+      this.__zxtractRequest = matches
         ? {
             method: String(method || "GET").toUpperCase(),
-            url: parsed.href,
-            offset: parsed.searchParams.has("offset")
-              ? Number(parsed.searchParams.get("offset"))
-              : null,
-            body: "",
+            offset: Number(parsed.searchParams.get("offset") || 0)
           }
         : null;
     } catch (_) {
@@ -213,42 +163,41 @@
     return originalOpen.apply(this, arguments);
   };
 
-  XMLHttpRequest.prototype.send = function(body) {
-    const requestInfo = this.__zxtractRequest;
-    if (requestInfo) {
-      requestInfo.body = typeof body === "string" ? body : "";
+  XMLHttpRequest.prototype.send = function() {
+    if (this.__zxtractRequest) {
       this.addEventListener("loadend", () => {
         try {
-          handleXhrResponse(this);
+          inspect(this);
         } catch (error) {
-          state.errors += 1;
-          updateUI("CAPTURE ERROR: " + (error?.message || String(error)));
-          console.error("[Zxtract] Response processing failed:", error);
+          state.errors++;
+          update("Capture error: " + (error?.message || String(error)));
+          console.error("[Zxtract] Capture error:", error);
         }
       }, { once: true });
     }
     return originalSend.apply(this, arguments);
   };
 
-  function createButton(label, onClick) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.textContent = label;
-    button.style.cssText =
-      "padding:8px 10px;border:0;border-radius:7px;background:#2563eb;color:#fff;" +
-      "font:600 13px system-ui;min-height:36px;";
-    button.addEventListener("click", onClick);
-    return button;
+  function button(label, action, color) {
+    const element = document.createElement("button");
+    element.type = "button";
+    element.textContent = label;
+    element.style.cssText =
+      "padding:8px 10px;border:0;border-radius:7px;background:" +
+      (color || "#2563eb") +
+      ";color:white;font:600 13px system-ui;min-height:36px;";
+    element.addEventListener("click", action);
+    return element;
   }
 
   function installPanel() {
     if (!document.body) {
-      console.error("[Zxtract] document.body is unavailable. Run the script again after the page loads.");
+      console.error("[Zxtract] Page body unavailable. Run after the table loads.");
       return;
     }
 
     const panel = document.createElement("section");
-    panel.id = "zxtract-ap-gq-panel";
+    panel.id = "zxtract-ap-government-quota";
     panel.style.cssText =
       "position:fixed;z-index:2147483647;right:12px;bottom:12px;left:12px;" +
       "max-width:520px;margin-left:auto;padding:12px;background:#111827;color:#f9fafb;" +
@@ -256,98 +205,85 @@
       "font:13px/1.4 system-ui;";
 
     const heading = document.createElement("div");
-    heading.textContent = "Zxtract · Andhra Pradesh Government Quota";
+    heading.textContent = "Zxtract · AP Government Quota";
     heading.style.cssText = "font-weight:700;margin-bottom:7px;";
 
     const status = document.createElement("div");
-    status.textContent = "Installed. Choose a file to begin capturing.";
     status.style.cssText = "margin-bottom:7px;color:#bfdbfe;";
+    status.textContent = "Ready. Choose an output file.";
 
     const stats = document.createElement("div");
-    stats.textContent = "Pages: 0 | Records: 0 | Duplicate pages: 0 | Errors: 0";
     stats.style.cssText = "font-size:11px;color:#d1d5db;margin-bottom:9px;";
+    stats.textContent = "Pages 0 · Records 0 · Duplicate pages 0 · Errors 0";
 
     const controls = document.createElement("div");
     controls.style.cssText = "display:flex;flex-wrap:wrap;gap:7px;";
 
-    const startButton = createButton("Choose file & start", async () => {
+    const start = button("Choose file & start", async () => {
       if (!window.showSaveFilePicker) {
-        updateUI("File picker API unavailable. Use a supported secure Android Chrome context.");
+        update("File picker API unavailable in this browser context.");
         return;
       }
-
       try {
-        const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+        const date = new Date().toISOString().slice(0, 10);
         const handle = await window.showSaveFilePicker({
-          suggestedName: "andhra-pradesh-government-quota-" + stamp + ".jsonl",
-          types: [{ description: "JSON Lines", accept: { "text/plain": [".jsonl"] } }],
+          suggestedName: "andhra-pradesh-government-quota-" + date + ".jsonl",
+          types: [{
+            description: "JSON Lines",
+            accept: { "text/plain": [".jsonl"] }
+          }]
         });
 
-        // Start a fresh capture file. If an existing file is selected, its
-        // contents are intentionally replaced; choose a new filename to retain old data.
-        const initialWriter = await handle.createWritable();
-        await initialWriter.close();
+        // A newly selected capture starts from an empty file.
+        const initial = await handle.createWritable();
+        await initial.close();
 
-        state.fileHandle = handle;
-        state.seenPages.clear();
-        state.pagesWritten = 0;
-        state.recordsWritten = 0;
-        state.duplicatePages = 0;
+        state.file = handle;
+        state.queue = Promise.resolve();
+        state.seenOffsets.clear();
+        state.pages = 0;
+        state.records = 0;
+        state.duplicates = 0;
         state.errors = 0;
         state.lastOffset = null;
-        state.writeQueue = Promise.resolve();
         state.active = true;
-        updateUI("Capturing. Paginate through the Zynerd table now.");
+        update("Capturing. Paginate through the Zynerd table.");
       } catch (error) {
-        if (error?.name === "AbortError") {
-          updateUI("File selection cancelled.");
-        } else {
-          updateUI("Could not open output file: " + (error?.message || String(error)));
-          console.error("[Zxtract] File selection failed:", error);
-        }
+        if (error?.name === "AbortError") update("File selection cancelled.");
+        else update("Could not open file: " + (error?.message || String(error)));
       }
     });
 
-    const pauseButton = createButton("Pause", () => {
+    const pause = button("Pause", () => {
       state.active = false;
-      updateUI("Paused. In-flight responses received after pausing will not be captured.");
+      update("Paused.");
     });
 
-    const resumeButton = createButton("Resume", () => {
-      if (!state.fileHandle) return;
+    const resume = button("Resume", () => {
+      if (!state.file) return;
       state.active = true;
-      updateUI("Capturing resumed. Continue paginating.");
+      update("Capture resumed.");
     });
 
-    const stopButton = createButton("Stop", async () => {
+    const stop = button("Stop", async () => {
       state.active = false;
-      await state.writeQueue;
-      updateUI("Stopped. File writes are complete; the JSONL file is ready.");
+      await state.queue;
+      update("Stopped. All queued writes have finished.");
     });
 
-    const closeButton = createButton("Hide", () => panel.remove());
-    closeButton.style.background = "#4b5563";
+    const hide = button("Hide", () => panel.remove(), "#4b5563");
 
-    controls.append(startButton, pauseButton, resumeButton, stopButton, closeButton);
+    controls.append(start, pause, resume, stop, hide);
     panel.append(heading, status, stats, controls);
     document.body.appendChild(panel);
 
     state.panel = panel;
     state.status = status;
     state.stats = stats;
-    state.startButton = startButton;
-    state.pauseButton = pauseButton;
-    state.resumeButton = resumeButton;
-    state.stopButton = stopButton;
-    updateUI("Installed. Choose a file to begin capturing.");
+    state.buttons = { start, pause, resume, stop };
+    update("Ready. Choose an output file.");
   }
 
-  state.installed = true;
-  window[GLOBAL_KEY] = state;
   installPanel();
-
-  console.info(
-    "[Zxtract] Andhra Pradesh Government Quota extractor installed. " +
-    "Choose a file in the on-page panel, then paginate the table."
-  );
+  console.info("[Zxtract] v1.1.0 installed. Endpoint: " + ENDPOINT + "?counselling_id=3&offset=N");
 })();
