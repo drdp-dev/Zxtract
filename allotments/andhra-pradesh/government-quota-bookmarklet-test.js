@@ -1,0 +1,29 @@
+javascript:(()=>{"use strict";
+const KEY="__ZXTRACT_AP_GOV_BOOKMARKLET_TEST__";
+if(window[KEY]?.installed){alert("Zxtract is already installed. Reload Zynerd before running it again.");return;}
+if(!window.XMLHttpRequest){alert("XMLHttpRequest is unavailable.");return;}
+const state={installed:true,active:false,lines:[],pages:0,records:0,errors:0};
+window[KEY]=state;
+const proto=XMLHttpRequest.prototype,originalOpen=proto.open,originalSend=proto.send;
+let wrappedOpen,wrappedSend;
+const panel=document.createElement("section");
+panel.style.cssText="position:fixed;z-index:2147483647;left:12px;right:12px;bottom:12px;max-width:520px;margin-left:auto;padding:13px;background:#111827;color:#f9fafb;border:1px solid #374151;border-radius:12px;box-shadow:0 4px 24px #0008;font:14px/1.45 system-ui";
+const heading=document.createElement("div");heading.textContent="Zxtract · AP Government Quota";
+heading.style.cssText="font-weight:700;margin-bottom:7px";
+const status=document.createElement("div");status.textContent="Installed. Start the 2-page test, then trigger one page load.";
+status.style.cssText="color:#bfdbfe;margin-bottom:7px";
+const stats=document.createElement("div");stats.textContent="Pages 0 · Records 0 · Errors 0";stats.style.cssText="font-size:12px;color:#d1d5db;margin-bottom:10px";
+const start=document.createElement("button");start.textContent="Start 2-page test";start.style.cssText="padding:9px 12px;border:0;border-radius:7px;background:#2563eb;color:white;font:600 14px system-ui";
+const download=document.createElement("a");download.textContent="Download JSONL";download.style.cssText="display:none;margin-left:12px;color:#93c5fd;font-weight:600";
+panel.append(heading,status,stats,start,download);document.body.append(panel);
+function update(message){status.textContent=message;stats.textContent="Pages "+state.pages+" · Records "+state.records+" · Errors "+state.errors;start.disabled=state.active;}
+function cleanup(message){state.active=false;if(proto.open===wrappedOpen)proto.open=originalOpen;if(proto.send===wrappedSend)proto.send=originalSend;update(message);}
+function complete(){cleanup("Two-page test complete. Download the JSONL file below.");const blob=new Blob([state.lines.join("\n")+"\n"],{type:"application/x-ndjson"});const url=URL.createObjectURL(blob);download.href=url;download.download="andhra-pradesh-government-quota-test.jsonl";download.style.display="inline-block";}
+function fail(message,error){state.errors++;cleanup(message);if(error)console.error("[Zxtract]",error);}
+function onLoadEnd(){const req=this.__zxReq;this.__zxReq=null;if(!state.active||!req||req.method!=="POST")return;if(this.status<200||this.status>=300){fail("Request failed at offset "+req.offset+" (HTTP "+this.status+").");return;}let payload;try{payload=this.responseType==="json"?this.response:JSON.parse(this.responseText||"{}");}catch(e){fail("Could not parse API response.",e);return;}const records=payload?.data?.records;if(!Array.isArray(records)){fail("API response did not contain data.records.");return;}for(const r of records){state.lines.push(JSON.stringify({rank:r?.rank??null,institute_id:r?.institute?.id??null,institute:r?.institute?.name??null,course:r?.course?.name??null,quota:r?.quota?.name??null,category:r?.category??null}));}state.pages++;state.records+=records.length;update("Saved page "+state.pages+" (offset "+req.offset+").");if(state.pages>=2||records.length<50){complete();return;}const next=document.querySelector('a[aria-label="Next page"]');if(!next||next.getAttribute("aria-disabled")==="true"||next.hasAttribute("disabled")||next.getAttribute("tabindex")==="-1"){complete();return;}update("Page 1 captured. Loading the next page…");next.click();}
+wrappedOpen=function(method,url){this.__zxReq=null;if(state.active){try{const u=new URL(String(url),location.href);if(u.pathname==="/api_v2/allotments/table_data"&&u.searchParams.get("counselling_id")==="3")this.__zxReq={method:String(method||"GET").toUpperCase(),offset:Number(u.searchParams.get("offset")||0)};}catch(_){}}return originalOpen.apply(this,arguments);};
+wrappedSend=function(){if(this.__zxReq)this.addEventListener("loadend",onLoadEnd,{once:true});return originalSend.apply(this,arguments);};
+proto.open=wrappedOpen;proto.send=wrappedSend;
+start.addEventListener("click",()=>{state.lines=[];state.pages=0;state.records=0;state.errors=0;state.active=true;download.style.display="none";update("Capturing. Now trigger one page load manually (change page or rank view).");});
+update("Installed. Tap Start 2-page test to begin.");
+})()
