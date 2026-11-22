@@ -2,7 +2,7 @@
  * Zxtract — Andhra Pradesh Government Quota (Zynerd)
  * Version: 1.5.4
  *
- * Run in Eruda Console after the Zynerd allotments table loads.
+ * Load from the Zxtract bookmarklet launcher on the Zynerd allotments page.
  * Choose an output file, then trigger one page load manually.
  * Each subsequent Next click occurs only after the preceding page is saved.
  *
@@ -29,7 +29,7 @@
     window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_2__?.installed ||
     window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_1__?.installed
   ) {
-    console.warn("[Zxtract] An earlier extractor is installed. Reload Zynerd before installing v1.5.2.");
+    console.warn("[Zxtract] An earlier extractor is installed. Reload Zynerd before installing the extractor again.");
     return;
   }
 
@@ -258,7 +258,7 @@
     dragHandle.appendChild(grip);
 
     const heading = document.createElement("div");
-    heading.textContent = "Zxtract · AP Government Quota";
+    heading.textContent = "Zxtract · Extractor";
     heading.style.cssText = "font-weight:700;margin-bottom:7px;";
 
     const status = document.createElement("div");
