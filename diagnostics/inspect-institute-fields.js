@@ -49,7 +49,7 @@
     dragHandle.appendChild(grip);
 
   const heading = document.createElement("div");
-  heading.textContent = "Zxtract · Institute diagnostics";
+  heading.textContent = "Zxtract · Diagnostics";
   heading.style.cssText = "font-weight:700;margin-bottom:7px;";
   const status = document.createElement("div");
   status.textContent = "Ready. Trigger one table page load to inspect the API response.";
@@ -225,7 +225,7 @@ function makeDraggable(panel, handle) {
     copy.style.opacity = "1";
     status.textContent = "Captured " + records.length + " records. Tap Copy inspection, then paste the result into this chat.";
     restore();
-    console.info("[Zxtract diagnostics] Captured institute fields. Use the on-page Copy inspection button.");
+    console.info("[Zxtract diagnostics] Captured API response. Use the on-page Copy inspection button.");
   }
 
   function onLoadEnd() {
