@@ -1,9 +1,10 @@
 /**
  * Zxtract — Andhra Pradesh Government Quota (Zynerd)
- * Version: 1.1.0
+ * Version: 1.2.0
  *
  * Run: paste this complete file into Eruda Console on the Zynerd allotments
- * table, execute it, choose an output file, then paginate normally.
+ * table, execute it, choose an output file, then trigger one page load manually. The script
+ * automatically clicks Next after each page has been fully saved.
  *
  * Output: JSONL with exactly six fields:
  * rank, institute_id, institute, course, quota, category
@@ -15,7 +16,7 @@
 (() => {
   "use strict";
 
-  const KEY = "__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_1__";
+  const KEY = "__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_2__";
   const ENDPOINT = "/api_v2/allotments/table_data";
   const COUNSELLING_ID = "3";
 
@@ -94,6 +95,39 @@
     }
   }
 
+  function clickNext(savedCount, offset) {
+    if (!state.active) return;
+
+    // A short page is the final page; do not advance.
+    if (savedCount < 50) {
+      state.active = false;
+      update("Complete. Saved final page (" + savedCount + " records).");
+      return;
+    }
+
+    const next = document.querySelector('a[aria-label="Next page"]');
+    if (!next) {
+      state.active = false;
+      update("Saved offset " + offset + ". Next control not found; stopped safely.");
+      return;
+    }
+
+    const disabled =
+      next.getAttribute("aria-disabled") === "true" ||
+      next.hasAttribute("disabled") ||
+      !!next.closest('[aria-disabled="true"]') ||
+      /disabled/i.test(String(next.className) + " " + String(next.parentElement?.className || ""));
+
+    if (disabled) {
+      state.active = false;
+      update("Saved offset " + offset + ". Next page is disabled; capture complete.");
+      return;
+    }
+
+    update("Saved offset " + offset + ". Loading next page…");
+    next.click();
+  }
+
   function capture(records, offset) {
     if (state.seenOffsets.has(offset)) {
       state.duplicates++;
@@ -121,17 +155,20 @@
       state.records += records.length;
       state.lastOffset = offset;
       update("Saved " + records.length + " records from offset " + offset + ".");
+      // append() closes the file writer before the Next click is attempted.
+      clickNext(records.length, offset);
     }).catch(error => {
       state.seenOffsets.delete(offset);
       state.errors++;
-      update("Write failed: " + (error?.message || String(error)));
+      state.active = false;
+      update("Write failed; automatic pagination stopped: " + (error?.message || String(error)));
       console.error("[Zxtract] Write failed:", error);
     });
   }
 
   function inspect(xhr) {
     const request = xhr.__zxtractRequest;
-    if (!state.active || !request || xhr.status < 200 || xhr.status >= 300) return;
+    if (!state.active || !request || request.method !== "POST" || xhr.status < 200 || xhr.status >= 300) return;
 
     const payload = parseResponse(xhr);
     const records = payload?.data?.records;
@@ -285,5 +322,5 @@
   }
 
   installPanel();
-  console.info("[Zxtract] v1.1.0 installed. Endpoint: " + ENDPOINT + "?counselling_id=3&offset=N");
+  console.info("[Zxtract] v1.2.0 installed. Trigger one page manually; Next is clicked only after its records are saved.");
 })();
