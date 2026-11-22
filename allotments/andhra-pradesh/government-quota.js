@@ -1,6 +1,6 @@
 /**
  * Zxtract — Andhra Pradesh Government Quota (Zynerd)
- * Version: 1.5.5
+ * Version: 1.5.6
  *
  * Load from the Zxtract bookmarklet launcher on the Zynerd allotments page.
  * Choose an output file, then trigger one page load manually.
@@ -13,12 +13,13 @@
 (() => {
   "use strict";
 
-  const KEY = "__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_5_5__";
+  const KEY = "__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_5_6__";
   const ENDPOINT = "/api_v2/allotments/table_data";
   const COUNSELLING_ID = "3";
 
   if (
     window[KEY]?.installed ||
+    window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_5_5__?.installed ||
     window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_5_4__?.installed ||
     window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_5_3__?.installed ||
     window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_5_1__?.installed ||
@@ -448,5 +449,5 @@ function makeDraggable(panel, handle) {
   }
 
   installPanel();
-  console.info("[Zxtract] v1.5.5 installed. Writes a pretty-printed JSON array incrementally, includes Android file-picker recovery, and offers Close after completion.");
+  console.info("[Zxtract] v1.5.6 installed. Writes a pretty-printed JSON array incrementally, includes Android file-picker recovery, and offers Close after completion.");
 })();
