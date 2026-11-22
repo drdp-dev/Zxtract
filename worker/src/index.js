@@ -88,7 +88,7 @@ export default {
 
     if (url.pathname === "/") {
       return new Response(
-        "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Zxtract Worker</title><body style=\"font:16px system-ui;max-width:680px;margin:48px auto;padding:0 18px\"><h1>Zxtract Worker</h1><p>Worker is running.</p><p><a href=\"/api/scripts\">View available extractor catalogue</a></p><p>Use the Zxtract bookmarklet on a supported counselling page to open the launcher.</p></body></html>",
+        "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Zxtract Worker</title><body style=\"font:16px system-ui;max-width:680px;margin:48px auto;padding:0 18px\"><h1>Zxtract Worker</h1><p>Worker is running.</p><p><a href=\"/api/scripts\">View available script catalogue</a></p><p>Use the Zxtract bookmarklet on a supported counselling page to open the launcher.</p></body></html>",
         { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } }
       );
     }
