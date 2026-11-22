@@ -1,6 +1,6 @@
 /**
  * Zxtract — Andhra Pradesh Government Quota (Zynerd)
- * Version: 1.5.3
+ * Version: 1.5.4
  *
  * Run in Eruda Console after the Zynerd allotments table loads.
  * Choose an output file, then trigger one page load manually.
@@ -13,12 +13,13 @@
 (() => {
   "use strict";
 
-  const KEY = "__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_5_3__";
+  const KEY = "__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_5_4__";
   const ENDPOINT = "/api_v2/allotments/table_data";
   const COUNSELLING_ID = "3";
 
   if (
     window[KEY]?.installed ||
+    window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_5_3__?.installed ||
     window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_5_1__?.installed ||
     window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_5_0__?.installed ||
     window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_4_2__?.installed ||
@@ -360,43 +361,70 @@
     panel.append(dragHandle, heading, status, stats, start, close);
     document.body.appendChild(panel);
 
-  function makeDraggable(panel, handle) {
+function makeDraggable(panel, handle) {
+    const storageKey = "zxtract-position-ap-government-quota-v1";
+    const readPosition = () => {
+      try {
+        const saved = JSON.parse(localStorage.getItem(storageKey) || "null");
+        if (saved && Number.isFinite(saved.left) && Number.isFinite(saved.top)) return saved;
+      } catch (_) {}
+      return null;
+    };
+    const savePosition = () => {
+      const rect = panel.getBoundingClientRect();
+      try {
+        localStorage.setItem(storageKey, JSON.stringify({
+          left: Math.round(rect.left),
+          top: Math.round(rect.top)
+        }));
+      } catch (_) {}
+    };
+    const applyPosition = (left, top) => {
+      const maxLeft = Math.max(0, window.innerWidth - panel.offsetWidth);
+      const maxTop = Math.max(0, window.innerHeight - panel.offsetHeight);
+      const x = Math.min(maxLeft, Math.max(0, left));
+      const y = Math.min(maxTop, Math.max(0, top));
+      panel.style.left = x + "px";
+      panel.style.top = y + "px";
+      panel.style.right = "auto";
+      panel.style.bottom = "auto";
+      panel.style.margin = "0";
+    };
+
+    const saved = readPosition();
+    if (saved) applyPosition(saved.left, saved.top);
+
     let drag = null;
     handle.style.cssText += ";touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none;";
     handle.addEventListener("pointerdown", event => {
       if (event.button !== 0 && event.pointerType === "mouse") return;
       const rect = panel.getBoundingClientRect();
       drag = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, left: rect.left, top: rect.top };
-      panel.style.left = rect.left + "px";
-      panel.style.top = rect.top + "px";
-      panel.style.right = "auto";
-      panel.style.bottom = "auto";
-      panel.style.margin = "0";
+      applyPosition(rect.left, rect.top);
       handle.style.cursor = "grabbing";
       try { handle.setPointerCapture(event.pointerId); } catch (_) {}
       event.preventDefault();
     });
     handle.addEventListener("pointermove", event => {
       if (!drag || event.pointerId !== drag.pointerId) return;
-      const maxLeft = Math.max(0, window.innerWidth - panel.offsetWidth);
-      const maxTop = Math.max(0, window.innerHeight - panel.offsetHeight);
-      panel.style.left = Math.min(maxLeft, Math.max(0, drag.left + event.clientX - drag.x)) + "px";
-      panel.style.top = Math.min(maxTop, Math.max(0, drag.top + event.clientY - drag.y)) + "px";
+      applyPosition(drag.left + event.clientX - drag.x, drag.top + event.clientY - drag.y);
     });
     const stop = event => {
       if (!drag || event.pointerId !== drag.pointerId) return;
       drag = null;
       handle.style.cursor = "grab";
+      savePosition();
     };
     handle.addEventListener("pointerup", stop);
     handle.addEventListener("pointercancel", stop);
     window.addEventListener("resize", () => {
-      if (!panel.style.left || !panel.style.top) return;
       const rect = panel.getBoundingClientRect();
-      panel.style.left = Math.min(Math.max(0, rect.left), Math.max(0, window.innerWidth - rect.width)) + "px";
-      panel.style.top = Math.min(Math.max(0, rect.top), Math.max(0, window.innerHeight - rect.height)) + "px";
+      applyPosition(rect.left, rect.top);
+      if (saved || panel.dataset.zxtractMoved === "true") savePosition();
     });
+    handle.addEventListener("pointerdown", () => { panel.dataset.zxtractMoved = "true"; });
   }
+
 
     makeDraggable(panel, dragHandle);
 
@@ -408,5 +436,5 @@
   }
 
   installPanel();
-  console.info("[Zxtract] v1.5.2 installed. Writes a pretty-printed JSON array incrementally, includes Android file-picker recovery, and offers Close after completion.");
+  console.info("[Zxtract] v1.5.4 installed. Writes a pretty-printed JSON array incrementally, includes Android file-picker recovery, and offers Close after completion.");
 })();
