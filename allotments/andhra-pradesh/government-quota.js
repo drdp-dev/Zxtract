@@ -1,6 +1,6 @@
 /**
  * Zxtract — Andhra Pradesh Government Quota (Zynerd)
- * Version: 1.5.6
+ * Version: 1.5.7
  *
  * Load from the Zxtract bookmarklet launcher on the Zynerd allotments page.
  * Choose an output file, then trigger one page load manually.
@@ -13,12 +13,13 @@
 (() => {
   "use strict";
 
-  const KEY = "__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_5_6__";
+  const KEY = "__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_5_7__";
   const ENDPOINT = "/api_v2/allotments/table_data";
   const COUNSELLING_ID = "3";
 
   if (
     window[KEY]?.installed ||
+    window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_5_6__?.installed ||
     window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_5_5__?.installed ||
     window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_5_4__?.installed ||
     window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_5_3__?.installed ||
@@ -83,6 +84,7 @@
     await append(state.hasRecords ? "\n]" : "]", false);
     cleanup(message + " Valid JSON file closed. XHR hooks removed.");
     if (state.closeButton) state.closeButton.style.display = "inline-block";
+    if (state.startButton) state.startButton.style.display = "inline-block";
   }
 
   async function append(text, isRecordChunk = true) {
@@ -366,6 +368,7 @@
       state.records = 0;
       state.errors = 0;
       state.active = true;
+      start.style.display = "none";
       if (state.closeButton) state.closeButton.style.display = "none";
       installHooks();
       update("Capturing. Trigger one page load manually to start.");
@@ -449,5 +452,5 @@ function makeDraggable(panel, handle) {
   }
 
   installPanel();
-  console.info("[Zxtract] v1.5.6 installed. Writes a pretty-printed JSON array incrementally, includes Android file-picker recovery, and offers Close after completion.");
+  console.info("[Zxtract] v1.5.7 installed. Writes a pretty-printed JSON array incrementally, includes Android file-picker recovery, and offers Close after completion.");
 })();
