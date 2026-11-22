@@ -106,7 +106,7 @@
 
       const next = document.querySelector('a[aria-label="Next page"]');
       if (!next) {
-        await append("]");
+        await append("]", false);
         cleanup("Saved offset " + offset + ". Next control not found; valid JSON file closed.");
         return;
       }
@@ -120,7 +120,7 @@
         /disabled/i.test(String(next.className) + " " + String(parent?.className || ""));
 
       if (disabled) {
-        await append("]");
+        await append("]", false);
         cleanup("Saved offset " + offset + ". Next is disabled; valid JSON file closed. XHR hooks removed.");
         return;
       }
