@@ -6,7 +6,7 @@ Dataset-specific scripts for Andhra Pradesh postgraduate medical allotment data.
 
 Script: [`government-quota.js`](./government-quota.js)
 
-Status: **v1.4.0 simplified single-button interface committed; live 35-page validation pending.**
+Status: **v1.4.1 improves file-picker error reporting; live 35-page validation pending.**
 
 ### Confirmed source contract
 
@@ -87,3 +87,4 @@ No other source fields, nested objects, capture timestamps, or extractor metadat
 - 2026-11-22: v1.2.0 adds save-gated automatic pagination; the first automated run crashed after 10 pages with Eruda active.
 - 2026-11-22: v1.3.0 reduces retained state, queues only projected JSONL text, uses a shared XHR completion handler, and restores XHR methods on completion/error. Full 35-page validation pending.
 - 2026-11-22: v1.4.0 removes pause, resume, stop, and hide controls; the panel now has one start button and live capture status.
+- 2026-11-22: v1.4.1 separates file selection from file initialization so an initialization AbortError is no longer mislabeled as a cancelled selection.
