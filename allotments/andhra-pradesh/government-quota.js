@@ -1,6 +1,6 @@
 /**
  * Zxtract — Andhra Pradesh Government Quota (Zynerd)
- * Version: 1.5.1
+ * Version: 1.5.2
  *
  * Run in Eruda Console after the Zynerd allotments table loads.
  * Choose an output file, then trigger one page load manually.
@@ -13,12 +13,13 @@
 (() => {
   "use strict";
 
-  const KEY = "__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_5_1__";
+  const KEY = "__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_5_2__";
   const ENDPOINT = "/api_v2/allotments/table_data";
   const COUNSELLING_ID = "3";
 
   if (
     window[KEY]?.installed ||
+    window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_5_1__?.installed ||
     window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_5_0__?.installed ||
     window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_4_2__?.installed ||
     window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_4_1__?.installed ||
@@ -27,7 +28,7 @@
     window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_2__?.installed ||
     window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_1__?.installed
   ) {
-    console.warn("[Zxtract] An earlier extractor is installed. Reload Zynerd before installing v1.5.1.");
+    console.warn("[Zxtract] An earlier extractor is installed. Reload Zynerd before installing v1.5.2.");
     return;
   }
 
@@ -76,7 +77,7 @@
   }
 
   async function complete(message) {
-    await append("]", false);
+    await append(state.hasRecords ? "\n]" : "]", false);
     cleanup(message + " Valid JSON file closed. XHR hooks removed.");
     if (state.closeButton) state.closeButton.style.display = "inline-block";
   }
@@ -86,7 +87,7 @@
     const writer = await state.file.createWritable({ keepExistingData: true });
     try {
       await writer.seek(current.size);
-      if (text && isRecordChunk && state.hasRecords) await writer.write(",");
+      if (text && isRecordChunk && state.hasRecords) await writer.write(",\n");
       if (text) await writer.write(text);
       await writer.close();
       if (text && isRecordChunk) state.hasRecords = true;
@@ -178,17 +179,18 @@
     const count = records.length;
     for (let i = 0; i < count; i++) {
       const record = records[i];
-      outputRecords.push(JSON.stringify({
+      const formatted = JSON.stringify({
         rank: record?.rank ?? null,
         institute_id: record?.institute?.id ?? null,
         institute: record?.institute?.name ?? null,
         course: record?.course?.name ?? null,
         quota: record?.quota?.name ?? null,
         category: record?.category ?? null
-      }));
+      }, null, 2);
+      outputRecords.push("  " + formatted.replaceAll("\n", "\n  "));
     }
 
-    finishPage(count, request.offset, outputRecords.join(","));
+    finishPage(count, request.offset, outputRecords.join(",\n"));
     payload = null;
   }
 
@@ -326,7 +328,7 @@
       update("File selected. Initializing output file…");
       try {
         const initial = await handle.createWritable();
-        await initial.write("[");
+        await initial.write("[\n");
         await initial.close();
       } catch (error) {
         update("File selected, but initialization failed: " +
@@ -358,5 +360,5 @@
   }
 
   installPanel();
-  console.info("[Zxtract] v1.5.1 installed. Writes a valid JSON array incrementally, includes Android file-picker recovery, and offers Close after completion.");
+  console.info("[Zxtract] v1.5.2 installed. Writes a pretty-printed JSON array incrementally, includes Android file-picker recovery, and offers Close after completion.");
 })();
