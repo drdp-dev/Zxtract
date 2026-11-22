@@ -1,11 +1,10 @@
 /**
  * Zxtract diagnostics — inspect Zynerd institute fields
- * Version: 1.0.0
+ * Version: 1.1.0
  *
  * Run in Eruda Console on the Andhra Pradesh Government Quota allotments page.
- * Then trigger one table page load. The script logs the raw institute object
- * and the keys present on the first few API records. It does not modify data
- * or trigger pagination.
+ * A small on-page panel appears. Trigger one table page load, then tap Copy
+ * inspection to copy the captured institute fields for sharing.
  *
  * Endpoint:
  * POST /api_v2/allotments/table_data?counselling_id=3&offset=N
@@ -14,7 +13,7 @@
 (() => {
   "use strict";
 
-  const KEY = "__ZXTRACT_AP_INSTITUTE_DIAGNOSTICS_V1__";
+  const KEY = "__ZXTRACT_AP_INSTITUTE_DIAGNOSTICS_V1_1__";
   const ENDPOINT = "/api_v2/allotments/table_data";
   const COUNSELLING_ID = "3";
 
@@ -31,8 +30,36 @@
   const proto = XMLHttpRequest.prototype;
   const originalOpen = proto.open;
   const originalSend = proto.send;
-  const state = { installed: true, captured: false };
+  const state = { installed: true, captured: false, copyText: "", panel: null };
   window[KEY] = state;
+
+  const panel = document.createElement("section");
+  panel.style.cssText =
+    "position:fixed;z-index:2147483647;right:12px;bottom:12px;left:12px;" +
+    "max-width:520px;margin-left:auto;padding:12px;background:#111827;color:#f9fafb;" +
+    "border:1px solid #374151;border-radius:12px;box-shadow:0 4px 24px #0008;" +
+    "font:13px/1.45 system-ui;";
+  const heading = document.createElement("div");
+  heading.textContent = "Zxtract · Institute diagnostics";
+  heading.style.cssText = "font-weight:700;margin-bottom:7px;";
+  const status = document.createElement("div");
+  status.textContent = "Ready. Trigger one table page load to inspect the API response.";
+  status.style.cssText = "color:#bfdbfe;margin-bottom:9px;";
+  const actions = document.createElement("div");
+  actions.style.cssText = "display:flex;gap:8px;flex-wrap:wrap;";
+  const copy = document.createElement("button");
+  copy.type = "button";
+  copy.textContent = "Copy inspection";
+  copy.disabled = true;
+  copy.style.cssText = "padding:8px 11px;border:0;border-radius:7px;background:#2563eb;color:white;font:600 13px system-ui;min-height:36px;opacity:.55;";
+  const close = document.createElement("button");
+  close.type = "button";
+  close.textContent = "Close";
+  close.style.cssText = "padding:8px 11px;border:1px solid #6b7280;border-radius:7px;background:#374151;color:white;font:600 13px system-ui;min-height:36px;";
+  actions.append(copy, close);
+  panel.append(heading, status, actions);
+  document.body.appendChild(panel);
+  state.panel = panel;
 
   function restore() {
     if (proto.open === wrappedOpen) proto.open = originalOpen;
@@ -40,13 +67,42 @@
     state.installed = false;
   }
 
+  async function copyInspection() {
+    if (!state.copyText) return;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(state.copyText);
+      } else {
+        throw new Error("Clipboard API unavailable");
+      }
+      status.textContent = "Inspection copied. Paste it into this chat.";
+    } catch (_) {
+      const area = document.createElement("textarea");
+      area.value = state.copyText;
+      area.setAttribute("readonly", "");
+      area.style.cssText = "position:fixed;left:-9999px;top:0;opacity:0;";
+      document.body.appendChild(area);
+      area.focus();
+      area.select();
+      let copied = false;
+      try { copied = document.execCommand("copy"); } catch (_) {}
+      area.remove();
+      status.textContent = copied
+        ? "Inspection copied. Paste it into this chat."
+        : "Automatic copy failed. Tap and hold the text is not available here; please retry in Chrome.";
+    }
+  }
+
+  copy.addEventListener("click", copyInspection);
+  close.addEventListener("click", () => panel.remove());
+
   function inspect(xhr) {
     const request = xhr.__zxtractDiagnosticRequest;
     xhr.__zxtractDiagnosticRequest = null;
     if (!request || state.captured) return;
 
     if (xhr.status < 200 || xhr.status >= 300) {
-      console.error("[Zxtract diagnostics] API request failed:", xhr.status, request);
+      status.textContent = "API request failed (HTTP " + xhr.status + "). Reload and try again.";
       restore();
       return;
     }
@@ -61,48 +117,48 @@
         payload = xhr.response;
       }
     } catch (error) {
-      console.error("[Zxtract diagnostics] Could not parse API response:", error);
+      status.textContent = "Could not parse API response: " + (error?.message || String(error));
       restore();
       return;
     }
 
     const records = payload?.data?.records;
     if (!Array.isArray(records) || records.length === 0) {
-      console.warn("[Zxtract diagnostics] No records found at data.records.", payload);
-      restore();
+      status.textContent = "No records found in this response. Trigger another table page load.";
       return;
     }
 
-    state.captured = true;
-    console.group("[Zxtract diagnostics] Zynerd institute field inspection");
-    console.log("Request:", request);
-    console.log("Record count in this response:", records.length);
-    console.log("Top-level record keys:", Object.keys(records[0] || {}));
-    console.log("First raw record:");
-    console.dir(records[0]);
-    console.log("First record's raw institute object:");
-    console.dir(records[0]?.institute);
-    console.log("Institute object keys:", Object.keys(records[0]?.institute || {}));
-    console.log("Sample institute objects (up to 5 records):");
-    console.table(records.slice(0, 5).map((record, index) => ({
+    const sample = records.slice(0, 5).map((record, index) => ({
       sample: index + 1,
-      institute_id: record?.institute?.id ?? null,
-      institute_name: record?.institute?.name ?? null,
-      institute_keys: Object.keys(record?.institute || {}).join(", ")
-    })));
-    console.log("Full API payload is available in the logged response object above if further inspection is needed.");
-    console.groupEnd();
+      record_keys: Object.keys(record || {}),
+      institute: record?.institute ?? null,
+      institute_keys: Object.keys(record?.institute || {})
+    }));
 
+    const report = {
+      request,
+      response_record_count: records.length,
+      first_record: records[0],
+      first_institute_object: records[0]?.institute ?? null,
+      samples: sample
+    };
+
+    state.copyText = JSON.stringify(report, null, 2);
+    state.captured = true;
+    copy.disabled = false;
+    copy.style.opacity = "1";
+    status.textContent = "Captured " + records.length + " records. Tap Copy inspection, then paste the result into this chat.";
     restore();
-    console.info("[Zxtract diagnostics] Inspection complete. XHR hooks restored. No pagination was triggered.");
+    console.info("[Zxtract diagnostics] Captured institute fields. Use the on-page Copy inspection button.");
   }
 
   function onLoadEnd() {
     try {
       inspect(this);
     } catch (error) {
-      console.error("[Zxtract diagnostics] Inspection failed:", error);
+      status.textContent = "Inspection failed: " + (error?.message || String(error));
       restore();
+      console.error("[Zxtract diagnostics]", error);
     }
   }
 
@@ -133,5 +189,5 @@
   proto.open = wrappedOpen;
   proto.send = wrappedSend;
 
-  console.info("[Zxtract diagnostics] Installed. Trigger one table page load; the first matching API response will be inspected.");
+  console.info("[Zxtract diagnostics] v1.1.0 installed. Use the on-page panel; no dev-tools output is required.");
 })();
