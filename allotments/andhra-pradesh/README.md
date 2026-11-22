@@ -6,7 +6,7 @@ Dataset-specific extractor scripts for Andhra Pradesh postgraduate medical allot
 
 Script: [`government-quota.js`](./government-quota.js)
 
-Current extractor version: **1.5.7**
+Current extractor version: **1.5.8**
 
 ### Launch on Android Chrome
 
