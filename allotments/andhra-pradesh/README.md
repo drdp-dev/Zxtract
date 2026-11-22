@@ -20,7 +20,7 @@ This is intentionally a two-page test, not the full 35-page extractor. It keeps 
 
 Script: [`government-quota.js`](./government-quota.js)
 
-Status: **v1.4.1 improves file-picker error reporting; live 35-page validation pending.**
+Status: **v1.4.2 adds recovery for Android file-manager providers that create the file but reject the save-picker promise; live 35-page validation pending.**
 
 ### Confirmed source contract
 
@@ -59,6 +59,7 @@ No other source fields, nested objects, capture timestamps, or extractor metadat
 4. Paste and execute it once.
 5. The **Zxtract · AP Government Quota** panel should appear.
 6. Tap **Choose file & start** and select a new `.jsonl` file.
+   - If Android creates the file but the save picker reports an `AbortError`, the button changes to **Select saved file**. Tap it and select the file Android just created. The extractor then initializes that file and starts normally.
    - The selected file is cleared when a new capture starts. Use a new filename to preserve an earlier capture.
 7. Trigger one page load manually after starting capture. For example, switch the rank view or navigate to page 1 if you are currently on page 2. This first captured page starts automatic pagination.
 8. After each page is fully written and the file writer is closed, the script clicks **Next** and captures the following page. Do not click Next manually while automation is running.
@@ -102,3 +103,5 @@ No other source fields, nested objects, capture timestamps, or extractor metadat
 - 2026-11-22: v1.3.0 reduces retained state, queues only projected JSONL text, uses a shared XHR completion handler, and restores XHR methods on completion/error. Full 35-page validation pending.
 - 2026-11-22: v1.4.0 removes pause, resume, stop, and hide controls; the panel now has one start button and live capture status.
 - 2026-11-22: v1.4.1 separates file selection from file initialization so an initialization AbortError is no longer mislabeled as a cancelled selection.
+
+- 2026-11-22: v1.4.2 adds a second, user-initiated open-file picker after an Android save-picker `AbortError`, allowing the extractor to recover the file that the file manager created but whose handle was not returned.
