@@ -40,7 +40,7 @@ No other source fields, nested objects, capture timestamps, or extractor metadat
 ### Run on Android Chrome with Eruda
 
 1. Open the Zynerd Andhra Pradesh Government Quota allotments table in Android Chrome.
-2. Open Eruda Console.
+2. Reload the Zynerd page to clear any previously installed extractor hooks, then open Eruda Console.
 3. Copy the complete contents of `government-quota.js` from this repository.
 4. Paste and execute it once.
 5. The **Zxtract · AP Government Quota** panel should appear.
