@@ -1,6 +1,6 @@
 /**
  * Zxtract — Andhra Pradesh Government Quota (Zynerd)
- * Version: 1.4.1
+ * Version: 1.4.2
  *
  * Run in Eruda Console after the Zynerd allotments table loads.
  * Choose an output file, then trigger one page load manually.
@@ -13,18 +13,19 @@
 (() => {
   "use strict";
 
-  const KEY = "__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_4_1__";
+  const KEY = "__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_4_2__";
   const ENDPOINT = "/api_v2/allotments/table_data";
   const COUNSELLING_ID = "3";
 
   if (
     window[KEY]?.installed ||
+    window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_4_1__?.installed ||
     window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_4__?.installed ||
     window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_3__?.installed ||
     window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_2__?.installed ||
     window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_1__?.installed
   ) {
-    console.warn("[Zxtract] An earlier extractor is installed. Reload Zynerd before installing v1.4.1.");
+    console.warn("[Zxtract] An earlier extractor is installed. Reload Zynerd before installing v1.4.2.");
     return;
   }
 
@@ -43,7 +44,8 @@
     errors: 0,
     status: null,
     stats: null,
-    startButton: null
+    startButton: null,
+    recoverExistingFile: false
   };
   window[KEY] = state;
 
@@ -250,27 +252,57 @@
     start.textContent = "Choose file & start";
     start.style.cssText = "padding:8px 10px;border:0;border-radius:7px;background:#2563eb;color:white;font:600 13px system-ui;min-height:36px;";
     start.addEventListener("click", async () => {
-      if (!window.showSaveFilePicker) {
-        update("File picker API unavailable in this browser context.");
-        return;
-      }
       let handle;
-      try {
-        const date = new Date().toISOString().slice(0, 10);
-        handle = await window.showSaveFilePicker({
-          suggestedName: "andhra-pradesh-government-quota-" + date + ".jsonl",
-          types: [{
-            description: "JSON Lines",
-            accept: { "text/plain": [".jsonl"] }
-          }]
-        });
-      } catch (error) {
-        if (error?.name === "AbortError") {
-          update("File picker was cancelled before a file was selected.");
-        } else {
-          update("File picker failed: " + (error?.name || "Error") + " — " + (error?.message || String(error)));
+
+      // Android file-manager providers can create the requested file but still
+      // reject showSaveFilePicker() with AbortError instead of returning its handle.
+      // Offer a second, user-initiated picker to reopen that created file.
+      if (state.recoverExistingFile) {
+        if (!window.showOpenFilePicker) {
+          update("This browser cannot reopen the created file. Reload and try a new filename.");
+          return;
         }
-        return;
+        try {
+          const [selected] = await window.showOpenFilePicker({
+            multiple: false,
+            types: [{
+              description: "JSON Lines",
+              accept: { "text/plain": [".jsonl"] }
+            }]
+          });
+          handle = selected;
+        } catch (error) {
+          if (error?.name === "AbortError") {
+            update("No file selected. Tap Select saved file to try again.");
+          } else {
+            update("Could not reopen file: " + (error?.name || "Error") + " — " + (error?.message || String(error)));
+          }
+          return;
+        }
+      } else {
+        if (!window.showSaveFilePicker) {
+          update("File picker API unavailable in this browser context.");
+          return;
+        }
+        try {
+          const date = new Date().toISOString().slice(0, 10);
+          handle = await window.showSaveFilePicker({
+            suggestedName: "andhra-pradesh-government-quota-" + date + ".jsonl",
+            types: [{
+              description: "JSON Lines",
+              accept: { "text/plain": [".jsonl"] }
+            }]
+          });
+        } catch (error) {
+          if (error?.name === "AbortError") {
+            state.recoverExistingFile = true;
+            start.textContent = "Select saved file";
+            update("The Android file picker closed without returning its file handle. If it created the file, tap Select saved file and choose it.");
+          } else {
+            update("File picker failed: " + (error?.name || "Error") + " — " + (error?.message || String(error)));
+          }
+          return;
+        }
       }
 
       update("File selected. Initializing output file…");
@@ -285,6 +317,8 @@
       }
 
       state.file = handle;
+      state.recoverExistingFile = false;
+      start.textContent = "Choose file & start";
       state.queue = Promise.resolve();
       state.pages = 0;
       state.records = 0;
@@ -303,5 +337,5 @@
   }
 
   installPanel();
-  console.info("[Zxtract] v1.4.1 installed. One start button with live status; XHR hooks are removed on completion or error.");
+  console.info("[Zxtract] v1.4.2 installed. Android file-picker recovery is enabled; XHR hooks are removed on completion or error.");
 })();
