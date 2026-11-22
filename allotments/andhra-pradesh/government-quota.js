@@ -1,6 +1,6 @@
 /**
  * Zxtract — Andhra Pradesh Government Quota (Zynerd)
- * Version: 1.4.0
+ * Version: 1.4.1
  *
  * Run in Eruda Console after the Zynerd allotments table loads.
  * Choose an output file, then trigger one page load manually.
@@ -13,17 +13,18 @@
 (() => {
   "use strict";
 
-  const KEY = "__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_4__";
+  const KEY = "__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_4_1__";
   const ENDPOINT = "/api_v2/allotments/table_data";
   const COUNSELLING_ID = "3";
 
   if (
     window[KEY]?.installed ||
+    window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_4__?.installed ||
     window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_3__?.installed ||
     window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_2__?.installed ||
     window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_1__?.installed
   ) {
-    console.warn("[Zxtract] An earlier extractor is installed. Reload Zynerd before installing v1.4.0.");
+    console.warn("[Zxtract] An earlier extractor is installed. Reload Zynerd before installing v1.4.1.");
     return;
   }
 
@@ -253,29 +254,43 @@
         update("File picker API unavailable in this browser context.");
         return;
       }
+      let handle;
       try {
         const date = new Date().toISOString().slice(0, 10);
-        const handle = await window.showSaveFilePicker({
+        handle = await window.showSaveFilePicker({
           suggestedName: "andhra-pradesh-government-quota-" + date + ".jsonl",
           types: [{
             description: "JSON Lines",
             accept: { "text/plain": [".jsonl"] }
           }]
         });
+      } catch (error) {
+        if (error?.name === "AbortError") {
+          update("File picker was cancelled before a file was selected.");
+        } else {
+          update("File picker failed: " + (error?.name || "Error") + " — " + (error?.message || String(error)));
+        }
+        return;
+      }
+
+      update("File selected. Initializing output file…");
+      try {
         const initial = await handle.createWritable();
         await initial.close();
-
-        state.file = handle;
-        state.queue = Promise.resolve();
-        state.pages = 0;
-        state.records = 0;
-        state.errors = 0;
-        state.active = true;
-        update("Capturing. Trigger one page load manually to start.");
       } catch (error) {
-        if (error?.name === "AbortError") update("File selection cancelled.");
-        else update("Could not open file: " + (error?.message || String(error)));
+        update("File selected, but initialization failed: " +
+          (error?.name || "Error") + " — " + (error?.message || String(error)));
+        console.error("[Zxtract] File initialization failed:", error);
+        return;
       }
+
+      state.file = handle;
+      state.queue = Promise.resolve();
+      state.pages = 0;
+      state.records = 0;
+      state.errors = 0;
+      state.active = true;
+      update("Capturing. Trigger one page load manually to start.");
     });
 
     panel.append(heading, status, stats, start);
@@ -288,5 +303,5 @@
   }
 
   installPanel();
-  console.info("[Zxtract] v1.4.0 installed. One start button with live status; XHR hooks are removed on completion or error.");
+  console.info("[Zxtract] v1.4.1 installed. One start button with live status; XHR hooks are removed on completion or error.");
 })();
