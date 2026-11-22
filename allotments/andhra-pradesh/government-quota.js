@@ -20,8 +20,8 @@
   const ENDPOINT = "/api_v2/allotments/table_data";
   const COUNSELLING_ID = "3";
 
-  if (window[KEY]?.installed) {
-    console.warn("[Zxtract] Already installed. Reload the page before reinstalling.");
+  if (window[KEY]?.installed || window.__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_1__?.installed) {
+    console.warn("[Zxtract] An earlier Zxtract version is installed. Reload the page before installing v1.2.0.");
     return;
   }
 
