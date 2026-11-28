@@ -1,6 +1,6 @@
 /**
  * Zxtract — Andhra Pradesh Management Quota (Zynerd)
- * Version: 1.1.0
+ * Version: 1.2.0
  *
  * Load from the Zxtract bookmarklet launcher on the Zynerd allotments page.
  * Choose an output file, then trigger one page load manually.
@@ -13,7 +13,7 @@
 (() => {
   "use strict";
 
-  const KEY = "__ZXTRACT_AP_MANAGEMENT_QUOTA_V1_1_0__";
+  const KEY = "__ZXTRACT_AP_MANAGEMENT_QUOTA_V1_2_0__";
   const ENDPOINT = "/api_v2/allotments/table_data";
   const COUNSELLING_ID = "4";
 
@@ -48,7 +48,8 @@
     hasRecords: false,
     seenOffsets: new Set(),
     lastOffset: null,
-    lastRecordCount: null
+    lastRecordCount: null,
+    selectedRound: null
   };
   window[KEY] = state;
 
@@ -95,6 +96,97 @@
       try { await writer.abort(); } catch (_) {}
       throw error;
     }
+  }
+
+
+  function roundValuesFrom(value, key = "", found = []) {
+    if (value == null) return found;
+    if (Array.isArray(value)) {
+      if (/round|phase/i.test(key)) {
+        if (value.length !== 1) {
+          found.push({ key, invalid: true });
+          return found;
+        }
+        return roundValuesFrom(value[0], key, found);
+      }
+      for (const item of value) roundValuesFrom(item, key, found);
+      return found;
+    }
+    if (typeof value === "object") {
+      for (const [childKey, childValue] of Object.entries(value)) {
+        roundValuesFrom(childValue, childKey, found);
+      }
+      return found;
+    }
+    if (/round|phase/i.test(key)) found.push({ key, value });
+    return found;
+  }
+
+  function getRoundFilter(url, body) {
+    const candidates = [];
+    try {
+      const parsed = new URL(url, location.href);
+      for (const [key, value] of parsed.searchParams.entries()) {
+        if (/round|phase/i.test(key)) candidates.push({ key, value });
+      }
+    } catch (_) {}
+
+    if (typeof body === "string" && body) {
+      try {
+        candidates.push(...roundValuesFrom(JSON.parse(body)));
+      } catch (_) {
+        try {
+          const params = new URLSearchParams(body);
+          for (const [key, value] of params.entries()) {
+            if (/round|phase/i.test(key)) candidates.push({ key, value });
+          }
+        } catch (_) {}
+      }
+    } else if (body instanceof URLSearchParams) {
+      for (const [key, value] of body.entries()) {
+        if (/round|phase/i.test(key)) candidates.push({ key, value });
+      }
+    } else if (body instanceof FormData) {
+      for (const [key, value] of body.entries()) {
+        if (/round|phase/i.test(key)) candidates.push({ key, value });
+      }
+    } else if (body && typeof body === "object") {
+      candidates.push(...roundValuesFrom(body));
+    }
+
+    if (!candidates.length || candidates.some(item => item.invalid)) return null;
+    const values = [...new Set(candidates.map(item => String(item.value ?? "").trim()).filter(Boolean))];
+    if (values.length !== 1) return null;
+    const value = values[0];
+    if (/^(all|all rounds|all phases|any|any round|any phase|none|null|undefined|0|-1)$/i.test(value)) return null;
+    return value;
+  }
+
+  async function invalidateRoundFilter(message) {
+    state.active = false;
+    if (proto.open === patchedOpen) proto.open = originalOpen;
+    if (proto.send === patchedSend) proto.send = originalSend;
+    state.queue = state.queue.then(async () => {
+      if (!state.file) return;
+      const writer = await state.file.createWritable();
+      try {
+        await writer.write("[]");
+        await writer.close();
+        state.hasRecords = false;
+        state.pages = 0;
+        state.records = 0;
+        state.lastOffset = null;
+        state.lastRecordCount = null;
+        update(message + " Output JSON has been reset to [].");
+        if (state.startButton) state.startButton.style.display = "inline-block";
+        if (state.closeButton) state.closeButton.style.display = "inline-block";
+      } catch (error) {
+        try { await writer.abort(); } catch (_) {}
+        update(message + " Could not reset output file: " + (error?.message || String(error)));
+      }
+    }).catch(error => {
+      update(message + " Could not reset output file: " + (error?.message || String(error)));
+    });
   }
 
   function finishPage(recordCount, offset, output) {
@@ -159,6 +251,20 @@
     xhr.__zxtractRequest = null;
 
     if (!state.active || !request || request.method !== "POST") return;
+
+    if (!request.roundFilter) {
+      state.errors++;
+      invalidateRoundFilter("Round filter missing or not specific. Please select only the desired round filter before extracting data.");
+      return;
+    }
+    if (state.selectedRound === null) {
+      state.selectedRound = request.roundFilter;
+    } else if (request.roundFilter !== state.selectedRound) {
+      state.errors++;
+      invalidateRoundFilter("Round filter changed during extraction. Please select only the desired round filter before extracting data.");
+      return;
+    }
+
     if (xhr.status < 200 || xhr.status >= 300) {
       state.errors++;
       cleanup("Request failed at offset " + request.offset + " (HTTP " + xhr.status + "). Capture stopped.");
@@ -234,6 +340,7 @@
 
   patchedOpen = function(method, url) {
     this.__zxtractRequest = null;
+    this.__zxtractUrl = String(url);
     if (state.active) {
       try {
         const parsed = new URL(String(url), location.href);
@@ -251,8 +358,9 @@
     return originalOpen.apply(this, arguments);
   };
 
-  patchedSend = function() {
+  patchedSend = function(body) {
     if (this.__zxtractRequest) {
+      this.__zxtractRequest.roundFilter = getRoundFilter(this.__zxtractUrl || "", body);
       this.addEventListener("loadend", onLoadEnd, { once: true });
     }
     return originalSend.apply(this, arguments);
@@ -392,6 +500,7 @@
       state.seenOffsets.clear();
       state.lastOffset = null;
       state.lastRecordCount = null;
+      state.selectedRound = null;
       state.active = true;
       start.style.display = "none";
       if (state.closeButton) state.closeButton.style.display = "none";
@@ -477,5 +586,5 @@ function makeDraggable(panel, handle) {
   }
 
   installPanel();
-  console.info("[Zxtract] v1.1.0 installed. Writes a pretty-printed JSON array incrementally, includes Android file-picker recovery, and offers Close after completion.");
+  console.info("[Zxtract] v1.2.0 installed. Writes a pretty-printed JSON array incrementally, includes Android file-picker recovery, and offers Close after completion.");
 })();
