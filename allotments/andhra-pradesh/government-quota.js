@@ -1,6 +1,6 @@
 /**
  * Zxtract — Andhra Pradesh Government Quota (Zynerd)
- * Version: 1.6.0
+ * Version: 1.7.0
  *
  * Load from the Zxtract bookmarklet launcher on the Zynerd allotments page.
  * Choose an output file, then trigger one page load manually.
@@ -13,7 +13,7 @@
 (() => {
   "use strict";
 
-  const KEY = "__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_6_0__";
+  const KEY = "__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_7_0__";
   const ENDPOINT = "/api_v2/allotments/table_data";
   const COUNSELLING_ID = "3";
 
@@ -47,9 +47,9 @@
     recoverExistingFile: false,
     hasRecords: false,
     seenOffsets: new Set(),
+    seenRanks: new Set(),
     lastOffset: null,
-    lastRecordCount: null,
-    selectedRound: null
+    lastRecordCount: null
   };
   window[KEY] = state;
 
@@ -99,70 +99,7 @@
   }
 
 
-  function roundValuesFrom(value, key = "", found = []) {
-    if (value == null) return found;
-    if (Array.isArray(value)) {
-      if (/round|phase/i.test(key)) {
-        if (value.length !== 1) {
-          found.push({ key, invalid: true });
-          return found;
-        }
-        return roundValuesFrom(value[0], key, found);
-      }
-      for (const item of value) roundValuesFrom(item, key, found);
-      return found;
-    }
-    if (typeof value === "object") {
-      for (const [childKey, childValue] of Object.entries(value)) {
-        roundValuesFrom(childValue, childKey, found);
-      }
-      return found;
-    }
-    if (/round|phase/i.test(key)) found.push({ key, value });
-    return found;
-  }
-
-  function getRoundFilter(url, body) {
-    const candidates = [];
-    try {
-      const parsed = new URL(url, location.href);
-      for (const [key, value] of parsed.searchParams.entries()) {
-        if (/round|phase/i.test(key)) candidates.push({ key, value });
-      }
-    } catch (_) {}
-
-    if (typeof body === "string" && body) {
-      try {
-        candidates.push(...roundValuesFrom(JSON.parse(body)));
-      } catch (_) {
-        try {
-          const params = new URLSearchParams(body);
-          for (const [key, value] of params.entries()) {
-            if (/round|phase/i.test(key)) candidates.push({ key, value });
-          }
-        } catch (_) {}
-      }
-    } else if (body instanceof URLSearchParams) {
-      for (const [key, value] of body.entries()) {
-        if (/round|phase/i.test(key)) candidates.push({ key, value });
-      }
-    } else if (body instanceof FormData) {
-      for (const [key, value] of body.entries()) {
-        if (/round|phase/i.test(key)) candidates.push({ key, value });
-      }
-    } else if (body && typeof body === "object") {
-      candidates.push(...roundValuesFrom(body));
-    }
-
-    if (!candidates.length || candidates.some(item => item.invalid)) return null;
-    const values = [...new Set(candidates.map(item => String(item.value ?? "").trim()).filter(Boolean))];
-    if (values.length !== 1) return null;
-    const value = values[0];
-    if (/^(all|all rounds|all phases|any|any round|any phase|none|null|undefined|0|-1)$/i.test(value)) return null;
-    return value;
-  }
-
-  async function invalidateRoundFilter(message) {
+  function invalidateDuplicateRank(rank) {
     state.active = false;
     if (proto.open === patchedOpen) proto.open = originalOpen;
     if (proto.send === patchedSend) proto.send = originalSend;
@@ -177,15 +114,18 @@
         state.records = 0;
         state.lastOffset = null;
         state.lastRecordCount = null;
-        update(message + " Output JSON has been reset to [].");
+        state.seenOffsets.clear();
+      state.seenRanks.clear();
+        state.seenRanks.clear();
+        update("Duplicate rank detected (" + rank + "). Extraction stopped and output JSON reset to [].");
         if (state.startButton) state.startButton.style.display = "inline-block";
         if (state.closeButton) state.closeButton.style.display = "inline-block";
       } catch (error) {
         try { await writer.abort(); } catch (_) {}
-        update(message + " Could not reset output file: " + (error?.message || String(error)));
+        update("Duplicate rank detected (" + rank + "). Could not reset output file: " + (error?.message || String(error)));
       }
     }).catch(error => {
-      update(message + " Could not reset output file: " + (error?.message || String(error)));
+      update("Duplicate rank detected (" + rank + "). Could not reset output file: " + (error?.message || String(error)));
     });
   }
 
@@ -252,19 +192,6 @@
 
     if (!state.active || !request || request.method !== "POST") return;
 
-    if (!request.roundFilter) {
-      state.errors++;
-      invalidateRoundFilter("Round filter missing or not specific. Please select only the desired round filter before extracting data.");
-      return;
-    }
-    if (state.selectedRound === null) {
-      state.selectedRound = request.roundFilter;
-    } else if (request.roundFilter !== state.selectedRound) {
-      state.errors++;
-      invalidateRoundFilter("Round filter changed during extraction. Please select only the desired round filter before extracting data.");
-      return;
-    }
-
     if (xhr.status < 200 || xhr.status >= 300) {
       state.errors++;
       cleanup("Request failed at offset " + request.offset + " (HTTP " + xhr.status + "). Capture stopped.");
@@ -306,6 +233,20 @@
       cleanup("Response at offset " + request.offset + " has no data.records array. Capture stopped.");
       return;
     }
+
+    const pageRanks = new Set();
+    for (const record of records) {
+      const rank = record?.rank;
+      if (rank === null || rank === undefined || rank === "") continue;
+      const rankKey = String(rank);
+      if (state.seenRanks.has(rankKey) || pageRanks.has(rankKey)) {
+        state.errors++;
+        invalidateDuplicateRank(rankKey);
+        return;
+      }
+      pageRanks.add(rankKey);
+    }
+    for (const rank of pageRanks) state.seenRanks.add(rank);
 
     // Build only the final JSON fragment. Do not retain the API records in the write queue.
     const outputRecords = [];
@@ -360,7 +301,6 @@
 
   patchedSend = function(body) {
     if (this.__zxtractRequest) {
-      this.__zxtractRequest.roundFilter = getRoundFilter(this.__zxtractUrl || "", body);
       this.addEventListener("loadend", onLoadEnd, { once: true });
     }
     return originalSend.apply(this, arguments);
@@ -500,7 +440,6 @@
       state.seenOffsets.clear();
       state.lastOffset = null;
       state.lastRecordCount = null;
-      state.selectedRound = null;
       state.active = true;
       start.style.display = "none";
       if (state.closeButton) state.closeButton.style.display = "none";
@@ -586,5 +525,5 @@ function makeDraggable(panel, handle) {
   }
 
   installPanel();
-  console.info("[Zxtract] v1.6.0 installed. Writes a pretty-printed JSON array incrementally, includes Android file-picker recovery, and offers Close after completion.");
+  console.info("[Zxtract] v1.7.0 installed. Writes a pretty-printed JSON array incrementally, includes Android file-picker recovery, and offers Close after completion.");
 })();
