@@ -1,6 +1,6 @@
 /**
  * Zxtract — Andhra Pradesh Government Quota (Zynerd)
- * Version: 1.5.8
+ * Version: 1.5.9
  *
  * Load from the Zxtract bookmarklet launcher on the Zynerd allotments page.
  * Choose an output file, then trigger one page load manually.
@@ -13,7 +13,7 @@
 (() => {
   "use strict";
 
-  const KEY = "__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_5_8__";
+  const KEY = "__ZXTRACT_AP_GOVERNMENT_QUOTA_V1_5_9__";
   const ENDPOINT = "/api_v2/allotments/table_data";
   const COUNSELLING_ID = "3";
 
@@ -45,7 +45,10 @@
     startButton: null,
     closeButton: null,
     recoverExistingFile: false,
-    hasRecords: false
+    hasRecords: false,
+    seenOffsets: new Set(),
+    lastOffset: null,
+    lastRecordCount: null
   };
   window[KEY] = state;
 
@@ -59,7 +62,8 @@
     if (state.status) state.status.textContent = message;
     if (state.stats) {
       state.stats.textContent = "Pages " + state.pages +
-        " · Records " + state.records + " · Errors " + state.errors;
+        " · Records " + state.records + " · Errors " + state.errors +
+        " · Last offset " + (state.lastOffset === null ? "—" : state.lastOffset);
     }
     if (state.startButton) state.startButton.disabled = state.active;
   }
@@ -95,8 +99,22 @@
 
   function finishPage(recordCount, offset, output) {
     state.queue = state.queue.then(async () => {
+      if (!state.active) return;
+
+      const expectedOffset = state.lastOffset === null
+        ? null
+        : state.lastOffset + state.lastRecordCount;
+      if (expectedOffset !== null && offset !== expectedOffset) {
+        state.errors++;
+        cleanup("Pagination sequence error: expected offset " + expectedOffset +
+          " but received " + offset + ". No records from this page were written.");
+        return;
+      }
+
       if (output) await append(output);
 
+      state.lastOffset = offset;
+      state.lastRecordCount = recordCount;
       state.pages++;
       state.records += recordCount;
       update("Saved " + recordCount + " records from offset " + offset + ".");
@@ -162,6 +180,19 @@
       console.warn("[Zxtract] Response parse failed:", error);
       return;
     }
+
+    if (!Number.isSafeInteger(request.offset) || request.offset < 0) {
+      state.errors++;
+      cleanup("Invalid pagination offset received. Capture stopped.");
+      return;
+    }
+    if (state.seenOffsets.has(request.offset)) {
+      state.errors++;
+      cleanup("Duplicate page detected at offset " + request.offset +
+        ". Capture stopped before writing the repeated page.");
+      return;
+    }
+    state.seenOffsets.add(request.offset);
 
     const records = payload?.data?.records;
     if (!Array.isArray(records)) {
@@ -358,6 +389,9 @@
       state.pages = 0;
       state.records = 0;
       state.errors = 0;
+      state.seenOffsets.clear();
+      state.lastOffset = null;
+      state.lastRecordCount = null;
       state.active = true;
       start.style.display = "none";
       if (state.closeButton) state.closeButton.style.display = "none";
@@ -443,5 +477,5 @@ function makeDraggable(panel, handle) {
   }
 
   installPanel();
-  console.info("[Zxtract] v1.5.8 installed. Writes a pretty-printed JSON array incrementally, includes Android file-picker recovery, and offers Close after completion.");
+  console.info("[Zxtract] v1.5.9 installed. Writes a pretty-printed JSON array incrementally, includes Android file-picker recovery, and offers Close after completion.");
 })();
