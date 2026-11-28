@@ -6,7 +6,7 @@ Dataset-specific extractor scripts for Andhra Pradesh postgraduate medical allot
 
 Script: [`government-quota.js`](./government-quota.js)
 
-Current extractor version: **1.5.8**
+Current extractor version: **1.5.9**
 
 ### Launch on Android Chrome
 
@@ -29,7 +29,7 @@ The popup can be moved using its top handle. Its position is saved on the Zynerd
 
 Script: [`management-quota.js`](./management-quota.js)
 
-Current extractor version: **1.0.0**
+Current extractor version: **1.1.0**
 
 ### Launch on Android Chrome
 
@@ -59,13 +59,14 @@ Nested institute, course, and quota values are flattened to their IDs/names. Mis
 
 ### Confirmed source contract
 
-Observed from the live Zynerd table:
+Observed from the live Zynerd Management Quota table:
 
 - Method: `POST`
 - Endpoint: `/api_v2/allotments/table_data`
-- Counselling ID: `3` (Andhra Pradesh Government Quota - PG Medical)
+- Counselling ID: `4` (Andhra Pradesh Management Quota)
 - Pagination: `offset`, observed page size 50
 - Response record path: `data.records`
+- Rank source: `record.ai_rank`
 
 The endpoint and response shape were inspected on 2026-11-22. Recheck if Zynerd changes its table implementation.
 
@@ -92,9 +93,14 @@ Missing values are written as JSON `null`. No additional source fields or extrac
 - Writes the six output fields incrementally inside one pretty-printed JSON array.
 - Serializes writes through a promise queue.
 - Automatically clicks `a[aria-label="Next page"]` only after the current page's write completes.
-- Stops on a short page, missing or disabled Next control, or a write failure.
+- Stops on a short page, missing or disabled Next control, a repeated offset, an unexpected offset, or a write failure.
+- Verifies sequential offsets using the previous page's actual record count; the first manually triggered page may begin at any offset.
+- Displays the last successfully saved offset in the panel.
 - Does not issue independent API requests or retain the complete dataset in browser memory.
 - Restores its XHR method overrides when capture ends or fails.
+- Tracks every captured offset and rejects duplicate offsets before writing.
+- Verifies that each subsequent offset equals the previous offset plus the previous page's record count.
+- Displays the last successfully saved offset and stops with an explicit error if pagination repeats, skips, or resets.
 
 ### Notes
 
