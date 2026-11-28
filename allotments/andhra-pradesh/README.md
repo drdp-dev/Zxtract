@@ -5,14 +5,14 @@ Dataset-specific extractor scripts for Andhra Pradesh postgraduate medical allot
 ## Government quota
 
 Script: [`government-quota.js`](./government-quota.js)  
-Current version: **1.6.0**  
+Current version: **1.7.0**  
 Counselling ID: `3`  
 Rank source: `record.rank`
 
 ## Management quota
 
 Script: [`management-quota.js`](./management-quota.js)  
-Current version: **1.2.0**  
+Current version: **1.3.0**  
 Counselling ID: `4`  
 Rank source: `record.ai_rank`
 
@@ -34,7 +34,7 @@ Nested institute, course, and quota values are flattened to their IDs/names. Mis
 3. Choose a new `.json` output file and start capture. On Android, if the save picker reports an `AbortError` after creating the file, use the **Select created file** recovery option when shown.
 4. Trigger one page load manually after capture starts. The extractor captures that response and then handles subsequent pagination automatically.
 5. Each page is written and the file writer is closed before the extractor clicks **Next**. Do not click Next manually while capture is running.
-6. Before writing any records, the extractor requires an explicit single-round filter in the API request. If the filter is missing, represents all rounds, or changes during capture, extraction stops and the selected JSON file is reset to `[]` with an instruction to select only the desired round.
+6. Before writing each page, the extractor checks ranks against all previously captured pages and within the current page. A duplicate rank stops extraction and resets the selected JSON file to `[]`.
 7. The panel displays page count, record count, errors, and the last successfully saved offset.
 8. The extractor tracks captured offsets and rejects a repeated offset before writing the repeated page.
 9. It verifies that each subsequent offset equals the previous offset plus the previous page's actual record count. The first manually triggered page may begin at any valid offset.
