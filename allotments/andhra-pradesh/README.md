@@ -5,14 +5,14 @@ Dataset-specific extractor scripts for Andhra Pradesh postgraduate medical allot
 ## Government quota
 
 Script: [`government-quota.js`](./government-quota.js)  
-Current version: **1.5.9**  
+Current version: **1.6.0**  
 Counselling ID: `3`  
 Rank source: `record.rank`
 
 ## Management quota
 
 Script: [`management-quota.js`](./management-quota.js)  
-Current version: **1.1.0**  
+Current version: **1.2.0**  
 Counselling ID: `4`  
 Rank source: `record.ai_rank`
 
@@ -34,11 +34,12 @@ Nested institute, course, and quota values are flattened to their IDs/names. Mis
 3. Choose a new `.json` output file and start capture. On Android, if the save picker reports an `AbortError` after creating the file, use the **Select created file** recovery option when shown.
 4. Trigger one page load manually after capture starts. The extractor captures that response and then handles subsequent pagination automatically.
 5. Each page is written and the file writer is closed before the extractor clicks **Next**. Do not click Next manually while capture is running.
-6. The panel displays page count, record count, errors, and the last successfully saved offset.
-7. The extractor tracks captured offsets and rejects a repeated offset before writing the repeated page.
-8. It verifies that each subsequent offset equals the previous offset plus the previous page's actual record count. The first manually triggered page may begin at any valid offset.
-9. A repeated, skipped, or reset offset stops capture with an explicit pagination error. A short page, missing/disabled Next control, HTTP/parse error, or write failure also stops capture.
-10. XHR hooks are restored when capture completes or stops.
+6. Before writing any records, the extractor requires an explicit single-round filter in the API request. If the filter is missing, represents all rounds, or changes during capture, extraction stops and the selected JSON file is reset to `[]` with an instruction to select only the desired round.
+7. The panel displays page count, record count, errors, and the last successfully saved offset.
+8. The extractor tracks captured offsets and rejects a repeated offset before writing the repeated page.
+9. It verifies that each subsequent offset equals the previous offset plus the previous page's actual record count. The first manually triggered page may begin at any valid offset.
+10. A repeated, skipped, or reset offset stops capture with an explicit pagination error. A short page, missing/disabled Next control, HTTP/parse error, or write failure also stops capture.
+11. XHR hooks are restored when capture completes or stops.
 
 Use a new output filename for each round to preserve earlier captures. The scripts do not issue independent API requests or retain the complete dataset in browser memory.
 
